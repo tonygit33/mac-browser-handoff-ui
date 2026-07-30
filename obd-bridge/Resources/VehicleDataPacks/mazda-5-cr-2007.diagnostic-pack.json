@@ -1,0 +1,106 @@
+{
+  "schemaVersion": "1.0",
+  "id": "vehicle.mazda-5-cr-2005-2010",
+  "version": "0.1.0",
+  "displayName": "Mazda 5 CR 2005-2010",
+  "matcher": {
+    "makes": ["Mazda"],
+    "models": ["5", "Mazda5"],
+    "minimumYear": 2005,
+    "maximumYear": 2010,
+    "vinPrefixes": ["JMZCR"],
+    "enginePatterns": [],
+    "calibrationIDPrefixes": [],
+    "requiredECUAddresses": []
+  },
+  "provenance": {
+    "id": "obdbridge.mazda5-cr-research",
+    "name": "OBD Bridge Mazda 5 CR verified research pack",
+    "version": "0.1.0",
+    "kind": "userVerified",
+    "license": "Reference-only; no proprietary Mazda PID addresses or formulas are bundled",
+    "sourceURL": null,
+    "checksum": null,
+    "attribution": "Built from verified vehicle captures and publicly documented standard SAE signals.",
+    "confidence": 0.65
+  },
+  "signals": [],
+  "scenarios": [
+    {
+      "id": "mazda5.cr.p2188",
+      "title": "Mazda 5 rich-at-idle differential test",
+      "descriptionText": "Compare fully warm idle, 2500 RPM and gasoline/LPG operation without clearing adaptations or trouble codes.",
+      "tags": ["mazda5","p2188","rich-idle","lpg"],
+      "phases": [
+        {
+          "id": "warm-idle-baseline",
+          "title": "Fully warm idle baseline",
+          "instructions": "Warm coolant to at least 80 C, disable A/C and large electrical loads, select the current fuel type, then idle for 90 seconds.",
+          "minimumDurationSeconds": 90,
+          "maximumDurationSeconds": 180,
+          "entryConditions": ["coolant-temperature>=80", "vehicle-speed=0", "fuel-mode-marked"],
+          "exitConditions": ["phase-duration>=90"],
+          "signals": [
+            {"signal":{"namespace":"sae","service":"01","identifier":"05","ecuAddress":null},"required":true,"targetFrequencyHz":1,"rationale":"Verify full warm-up"},
+            {"signal":{"namespace":"sae","service":"01","identifier":"0C","ecuAddress":null},"required":true,"targetFrequencyHz":5,"rationale":"Idle stability"},
+            {"signal":{"namespace":"sae","service":"01","identifier":"06","ecuAddress":null},"required":true,"targetFrequencyHz":5,"rationale":"Immediate rich/lean correction"},
+            {"signal":{"namespace":"sae","service":"01","identifier":"07","ecuAddress":null},"required":true,"targetFrequencyHz":2,"rationale":"Learned correction"},
+            {"signal":{"namespace":"sae","service":"01","identifier":"0B","ecuAddress":null},"required":false,"targetFrequencyHz":5,"rationale":"Vacuum/load correlation"},
+            {"signal":{"namespace":"sae","service":"01","identifier":"10","ecuAddress":null},"required":false,"targetFrequencyHz":5,"rationale":"MAF plausibility"},
+            {"signal":{"namespace":"sae","service":"01","identifier":"11","ecuAddress":null},"required":false,"targetFrequencyHz":5,"rationale":"Throttle plausibility"},
+            {"signal":{"namespace":"sae","service":"01","identifier":"14","ecuAddress":null},"required":false,"targetFrequencyHz":5,"rationale":"Oxygen feedback when conventional sensor PID is supported"},
+            {"signal":{"namespace":"sae","service":"01","identifier":"42","ecuAddress":null},"required":false,"targetFrequencyHz":1,"rationale":"Electrical-system influence"}
+          ]
+        },
+        {
+          "id": "steady-2500-comparison",
+          "title": "Steady 2500 RPM comparison",
+          "instructions": "In Park or Neutral, hold 2300-2700 RPM for 45 seconds if safe. Do not perform this test if the vehicle behaves abnormally.",
+          "minimumDurationSeconds": 45,
+          "maximumDurationSeconds": 75,
+          "entryConditions": ["coolant-temperature>=80", "engine-speed=2300..2700", "vehicle-speed=0"],
+          "exitConditions": ["phase-duration>=45"],
+          "signals": [
+            {"signal":{"namespace":"sae","service":"01","identifier":"0C","ecuAddress":null},"required":true,"targetFrequencyHz":5,"rationale":"Verify test operating point"},
+            {"signal":{"namespace":"sae","service":"01","identifier":"06","ecuAddress":null},"required":true,"targetFrequencyHz":5,"rationale":"Separate idle-only faults from faults across load"},
+            {"signal":{"namespace":"sae","service":"01","identifier":"07","ecuAddress":null},"required":true,"targetFrequencyHz":2,"rationale":"Adaptation comparison"},
+            {"signal":{"namespace":"sae","service":"01","identifier":"0B","ecuAddress":null},"required":false,"targetFrequencyHz":5,"rationale":"MAP change from idle"},
+            {"signal":{"namespace":"sae","service":"01","identifier":"10","ecuAddress":null},"required":false,"targetFrequencyHz":5,"rationale":"MAF change from idle"}
+          ]
+        },
+        {
+          "id": "fuel-system-comparison",
+          "title": "Gasoline versus LPG comparison",
+          "instructions": "Only when safe and already configured by the LPG system, record separate gasoline and LPG sessions. Mark every fuel switch and wait for stable operation.",
+          "minimumDurationSeconds": 120,
+          "maximumDurationSeconds": 600,
+          "entryConditions": ["coolant-temperature>=80", "fuel-mode-marked"],
+          "exitConditions": ["gasoline-segment-recorded", "lpg-segment-recorded", "user-stop"],
+          "signals": [
+            {"signal":{"namespace":"sae","service":"01","identifier":"0C","ecuAddress":null},"required":true,"targetFrequencyHz":5,"rationale":"Match operating points between fuels"},
+            {"signal":{"namespace":"sae","service":"01","identifier":"06","ecuAddress":null},"required":true,"targetFrequencyHz":5,"rationale":"Immediate correction by fuel mode"},
+            {"signal":{"namespace":"sae","service":"01","identifier":"07","ecuAddress":null},"required":true,"targetFrequencyHz":2,"rationale":"Long-term adaptation context"},
+            {"signal":{"namespace":"sae","service":"01","identifier":"0B","ecuAddress":null},"required":false,"targetFrequencyHz":5,"rationale":"Comparable load"},
+            {"signal":{"namespace":"sae","service":"01","identifier":"10","ecuAddress":null},"required":false,"targetFrequencyHz":5,"rationale":"Comparable airflow"}
+          ]
+        }
+      ]
+    }
+  ],
+  "researchTargets": [
+    "Cylinder-specific misfire counters",
+    "EVAP purge command and purge valve duty",
+    "Fuel injector pulse width",
+    "Fuel rail pressure where fitted",
+    "Electronic throttle commanded and actual angles",
+    "Intake manifold runner control status",
+    "Variable valve timing command and actual position",
+    "Mazda PCM calibration ID and CVN",
+    "Transmission and ABS module identification"
+  ],
+  "notes": [
+    "This pack intentionally contains no guessed Mazda proprietary PID addresses or decode formulas.",
+    "OEM definitions must be added only after verification against an ODX/CDD source, a licensed service database, or repeatable captures from a known ECU calibration.",
+    "VIN prefix JMZCR is used as a strong matcher for the current regression vehicle family."
+  ]
+}
