@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://obdbridge.local/schemas/diagnostic-pack.schema.json",
+  "title": "OBD Bridge Diagnostic Data Pack",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "id", "version", "displayName", "matcher", "provenance", "signals", "scenarios", "researchTargets", "notes"],
+  "properties": {
+    "schemaVersion": {"const": "1.0"},
+    "id": {"type": "string", "minLength": 3},
+    "version": {"type": "string", "minLength": 1},
+    "displayName": {"type": "string", "minLength": 1},
+    "matcher": {"$ref": "#/$defs/matcher"},
+    "provenance": {"$ref": "#/$defs/provenance"},
+    "signals": {"type": "array", "items": {"$ref": "#/$defs/signal"}},
+    "scenarios": {"type": "array", "items": {"$ref": "#/$defs/scenario"}},
+    "researchTargets": {"type": "array", "items": {"type": "string"}},
+    "notes": {"type": "array", "items": {"type": "string"}}
+  },
+  "$defs": {
+    "matcher": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["makes", "models", "minimumYear", "maximumYear", "vinPrefixes", "enginePatterns", "calibrationIDPrefixes", "requiredECUAddresses"],
+      "properties": {
+        "makes": {"type": "array", "items": {"type": "string"}},
+        "models": {"type": "array", "items": {"type": "string"}},
+        "minimumYear": {"type": ["integer", "null"], "minimum": 1900, "maximum": 2200},
+        "maximumYear": {"type": ["integer", "null"], "minimum": 1900, "maximum": 2200},
+        "vinPrefixes": {"type": "array", "items": {"type": "string", "pattern": "^[A-HJ-NPR-Z0-9]+$"}},
+        "enginePatterns": {"type": "array", "items": {"type": "string"}},
+        "calibrationIDPrefixes": {"type": "array", "items": {"type": "string"}},
+        "requiredECUAddresses": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "version", "kind", "license", "sourceURL", "checksum", "attribution", "confidence"],
+      "properties": {
+        "id": {"type": "string"},
+        "name": {"type": "string"},
+        "version": {"type": "string"},
+        "kind": {"enum": ["sae", "iso", "asamODX", "dbc", "arxml", "cdd", "manufacturer", "community", "userVerified", "discoveredRaw"]},
+        "license": {"type": "string", "minLength": 1},
+        "sourceURL": {"type": ["string", "null"], "format": "uri"},
+        "checksum": {"type": ["string", "null"]},
+        "attribution": {"type": ["string", "null"]},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    },
+    "signalKey": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["namespace", "service", "identifier", "ecuAddress"],
+      "properties": {
+        "namespace": {"type": "string"},
+        "service": {"type": "string"},
+        "identifier": {"type": "string"},
+        "ecuAddress": {"type": ["string", "null"]}
+      }
+    },
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["service", "identifier", "header", "session", "subfunction", "timeoutMilliseconds", "responsePrefix"],
+      "properties": {
+        "service": {"type": "string"},
+        "identifier": {"type": "string"},
+        "header": {"type": ["string", "null"]},
+        "session": {"type": ["string", "null"]},
+        "subfunction": {"type": ["string", "null"]},
+        "timeoutMilliseconds": {"type": "integer", "minimum": 1, "maximum": 120000},
+        "responsePrefix": {"type": ["string", "null"]}
+      }
+    },
+    "decode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "startBit", "bitLength", "endian", "isSigned", "factor", "offset", "unit", "expression", "lookup"],
+      "properties": {
+        "kind": {"enum": ["linear", "bitfield", "lookup", "ascii", "boolean", "expression", "raw"]},
+        "startBit": {"type": ["integer", "null"], "minimum": 0},
+        "bitLength": {"type": ["integer", "null"], "minimum": 1},
+        "endian": {"type": ["string", "null"], "enum": ["big", "little", null]},
+        "isSigned": {"type": ["boolean", "null"]},
+        "factor": {"type": ["number", "null"]},
+        "offset": {"type": ["number", "null"]},
+        "unit": {"type": ["string", "null"]},
+        "expression": {"type": ["string", "null"]},
+        "lookup": {"type": ["object", "null"], "additionalProperties": {"type": "string"}}
+      }
+    },
+    "expectedRange": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["minimum", "maximum", "unit", "conditions"],
+      "properties": {
+        "minimum": {"type": ["number", "null"]},
+        "maximum": {"type": ["number", "null"]},
+        "unit": {"type": ["string", "null"]},
+        "conditions": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "signal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "name", "descriptionText", "category", "request", "decode", "safety", "preferredFrequencyHz", "maximumFrequencyHz", "expectedRange", "preconditions", "tags", "provenance"],
+      "properties": {
+        "key": {"$ref": "#/$defs/signalKey"},
+        "name": {"type": "string", "minLength": 1},
+        "descriptionText": {"type": ["string", "null"]},
+        "category": {"type": "string"},
+        "request": {"$ref": "#/$defs/request"},
+        "decode": {"$ref": "#/$defs/decode"},
+        "safety": {"enum": ["passive", "readOnly", "restricted", "write", "unknown"]},
+        "preferredFrequencyHz": {"type": ["number", "null"], "exclusiveMinimum": 0},
+        "maximumFrequencyHz": {"type": ["number", "null"], "exclusiveMinimum": 0},
+        "expectedRange": {"$ref": "#/$defs/expectedRange"},
+        "preconditions": {"type": "array", "items": {"type": "string"}},
+        "tags": {"type": "array", "items": {"type": "string"}},
+        "provenance": {"$ref": "#/$defs/provenance"}
+      }
+    },
+    "scenarioSignal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["signal", "required", "targetFrequencyHz", "rationale"],
+      "properties": {
+        "signal": {"$ref": "#/$defs/signalKey"},
+        "required": {"type": "boolean"},
+        "targetFrequencyHz": {"type": ["number", "null"], "exclusiveMinimum": 0},
+        "rationale": {"type": ["string", "null"]}
+      }
+    },
+    "phase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "instructions", "minimumDurationSeconds", "maximumDurationSeconds", "entryConditions", "exitConditions", "signals"],
+      "properties": {
+        "id": {"type": "string"},
+        "title": {"type": "string"},
+        "instructions": {"type": "string"},
+        "minimumDurationSeconds": {"type": "number", "minimum": 0},
+        "maximumDurationSeconds": {"type": ["number", "null"], "minimum": 0},
+        "entryConditions": {"type": "array", "items": {"type": "string"}},
+        "exitConditions": {"type": "array", "items": {"type": "string"}},
+        "signals": {"type": "array", "items": {"$ref": "#/$defs/scenarioSignal"}}
+      }
+    },
+    "scenario": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "descriptionText", "tags", "phases"],
+      "properties": {
+        "id": {"type": "string"},
+        "title": {"type": "string"},
+        "descriptionText": {"type": "string"},
+        "tags": {"type": "array", "items": {"type": "string"}},
+        "phases": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/phase"}}
+      }
+    }
+  }
+}
