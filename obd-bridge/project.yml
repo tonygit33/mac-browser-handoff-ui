@@ -13,12 +13,14 @@ targets:
     platform: iOS
     sources:
       - path: OBDBridge
+    resources:
+      - path: Resources
     info:
       path: OBDBridge/Info.plist
       properties:
         CFBundleDisplayName: OBD Bridge
-        CFBundleShortVersionString: "0.2.1"
-        CFBundleVersion: "3"
+        CFBundleShortVersionString: "0.3.0"
+        CFBundleVersion: "4"
         UIFileSharingEnabled: true
         LSSupportsOpeningDocumentsInPlace: true
         NSBluetoothAlwaysUsageDescription: OBD Bridge uses Bluetooth to communicate with your paired OBDLink MX+ adapter.
@@ -33,8 +35,8 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.anton.obdbridge
         PRODUCT_NAME: OBDBridge
-        MARKETING_VERSION: "0.2.1"
-        CURRENT_PROJECT_VERSION: "3"
+        MARKETING_VERSION: "0.3.0"
+        CURRENT_PROJECT_VERSION: "4"
         INFOPLIST_FILE: OBDBridge/Info.plist
         TARGETED_DEVICE_FAMILY: "1"
         CODE_SIGN_STYLE: Automatic
