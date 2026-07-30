@@ -17,6 +17,8 @@ targets:
       path: OBDBridge/Info.plist
       properties:
         CFBundleDisplayName: OBD Bridge
+        CFBundleShortVersionString: "0.2.0"
+        CFBundleVersion: "2"
         NSBluetoothAlwaysUsageDescription: OBD Bridge uses Bluetooth to communicate with your paired OBDLink MX+ adapter.
         UISupportedExternalAccessoryProtocols:
           - com.obdlink
@@ -29,6 +31,8 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.anton.obdbridge
         PRODUCT_NAME: OBDBridge
+        MARKETING_VERSION: "0.2.0"
+        CURRENT_PROJECT_VERSION: "2"
         INFOPLIST_FILE: OBDBridge/Info.plist
         TARGETED_DEVICE_FAMILY: "1"
         CODE_SIGN_STYLE: Automatic
