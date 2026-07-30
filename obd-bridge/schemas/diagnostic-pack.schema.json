@@ -57,6 +57,7 @@
         "namespace": {"type": "string"},
         "service": {"type": "string"},
         "identifier": {"type": "string"},
+        "signalID": {"type": ["string", "null"]},
         "ecuAddress": {"type": ["string", "null"]}
       }
     },
