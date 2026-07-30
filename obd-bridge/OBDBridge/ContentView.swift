@@ -57,6 +57,9 @@ struct ContentView: View {
                 Text("Protocol: \(AccessoryBridge.obdLinkProtocol)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                Text(bridge.professional.status)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
                 if !bridge.protocolDescription.isEmpty {
                     Text(bridge.protocolDescription)
                         .font(.caption2.monospaced())

@@ -44,6 +44,7 @@ final class AccessoryBridge: NSObject, ObservableObject, StreamDelegate {
     @Published private(set) var isLogging = false
 
     let recorder = DiagnosticSessionRecorder()
+    let professional = ProfessionalDiagnosticsRuntime()
 
     var exportURLs: [URL] { recorder.lastExportURLs }
 
@@ -226,12 +227,14 @@ final class AccessoryBridge: NSObject, ObservableObject, StreamDelegate {
             label: "Deep-read-only-scan",
             fuelMode: fuelMode,
             metadata: [
-                "vehicle": "Mazda 5 2007",
+                "vehicle": "Auto-detect",
                 "adapter": connectedName ?? "OBDLink MX+",
                 "appMode": "read-only",
-                "expectedMazdaEnhancedSignals": PIDCatalog.mazda2007ExpectedEnhancedNames.joined(separator: ",")
+                "dataPackMode": "automatic verified packs"
             ]
         )
+        professional.beginSession(directory: recorder.currentDirectory, fuelMode: fuelMode, scenario: activeScenario)
+        professional.updateContext(vin: vin, protocolDescription: protocolDescription, adapterDetails: adapterDetails, supportedPIDs: supportedPIDs)
 
         var commands: [QueuedCommand] = [
             q("ATZ", 5, "Reset adapter"),
@@ -302,12 +305,14 @@ final class AccessoryBridge: NSObject, ObservableObject, StreamDelegate {
             label: preset.rawValue,
             fuelMode: fuelMode,
             metadata: [
-                "vehicle": "Mazda 5 2007",
+                "vehicle": "Auto-detect",
                 "adapter": connectedName ?? "OBDLink MX+",
                 "appMode": "read-only continuous",
                 "instructions": preset.instructions
             ]
         )
+        professional.beginSession(directory: recorder.currentDirectory, fuelMode: fuelMode, scenario: activeScenario)
+        professional.updateContext(vin: vin, protocolDescription: protocolDescription, adapterDetails: adapterDetails, supportedPIDs: supportedPIDs)
         recorder.marker("User-selected test: \(preset.rawValue)")
         let setup = [
             q("ATE0", 3, "Disable echo"),
@@ -330,6 +335,7 @@ final class AccessoryBridge: NSObject, ObservableObject, StreamDelegate {
     func setFuelMode(_ mode: FuelMode) {
         currentFuelMode = mode
         recorder.setFuelMode(mode)
+        professional.setFuelMode(mode)
     }
 
     func addMarker(_ text: String) {
@@ -468,6 +474,7 @@ final class AccessoryBridge: NSObject, ObservableObject, StreamDelegate {
         activeBuffer = ""
 
         recorder.command(command.text, response: response, timedOut: timedOut)
+        if timedOut { professional.markTimeout() }
         process(command: command.text, response: response)
 
         if workflow != .none {
@@ -491,9 +498,16 @@ final class AccessoryBridge: NSObject, ObservableObject, StreamDelegate {
             if pid % 0x20 == 0 {
                 supportedPIDs.formUnion(OBDDecoder.supportedIDs(responseService: 0x41, base: pid, response: response))
                 supportedPIDCount = supportedPIDs.count
-            } else if let decoded = OBDDecoder.decodeMode01(pid: pid, response: response) {
-                latestValues[decoded.name] = "\(decoded.value)\(decoded.unit.isEmpty ? "" : " \(decoded.unit)")"
-                recorder.sample(command: command, decoded: decoded)
+            } else {
+                if let decoded = OBDDecoder.decodeMode01(pid: pid, response: response) {
+                    latestValues[decoded.name] = "\(decoded.value)\(decoded.unit.isEmpty ? "" : " \(decoded.unit)")"
+                    recorder.sample(command: command, decoded: decoded)
+                }
+                for sample in professional.recordMode01(pid: pid, response: response) {
+                    let value = sample.textValue ?? sample.numericValue.map { String(format: "%.4g", $0) } ?? "raw"
+                    let unit = sample.unit.map { " \($0)" } ?? ""
+                    latestValues[sample.signal.description] = value + unit
+                }
             }
         }
 
@@ -516,8 +530,10 @@ final class AccessoryBridge: NSObject, ObservableObject, StreamDelegate {
             latestValues["VIN"] = decodedVIN
         } else if upper == "0904", let value = OBDDecoder.asciiPayload(service: 0x49, pid: 0x04, response: response) {
             latestValues["Calibration ID"] = value
+            adapterDetails["calibrationID"] = value
         } else if upper == "0906" {
             latestValues["CVN raw"] = compact(response)
+            adapterDetails["cvn"] = compact(response)
         } else if upper == "090A", let value = OBDDecoder.asciiPayload(service: 0x49, pid: 0x0A, response: response) {
             latestValues["ECU name"] = value
         }
@@ -541,6 +557,11 @@ final class AccessoryBridge: NSObject, ObservableObject, StreamDelegate {
             latestValues["Protocol baud"] = compact(response)
         default:
             break
+        }
+
+        professional.updateContext(vin: vin, protocolDescription: protocolDescription, adapterDetails: adapterDetails, supportedPIDs: supportedPIDs)
+        if !professional.selectedPackIDs.isEmpty {
+            latestValues["Diagnostic data packs"] = professional.selectedPackIDs.joined(separator: ", ")
         }
     }
 
@@ -652,7 +673,7 @@ final class AccessoryBridge: NSObject, ObservableObject, StreamDelegate {
         guard recorder.currentDirectory != nil else { return }
         var summary = adapterDetails
         summary["result"] = summaryLabel
-        summary["vehicle"] = "Mazda 5 2007"
+        summary["vehicle"] = professional.vehicleDisplayName
         summary["VIN"] = vin
         summary["protocol"] = protocolDescription
         summary["supportedPIDCount"] = String(supportedPIDs.count)
@@ -662,6 +683,7 @@ final class AccessoryBridge: NSObject, ObservableObject, StreamDelegate {
         for (key, value) in latestValues {
             summary["value.\(key)"] = value
         }
+        _ = professional.finishSession(dtcs: dtcs, summaryLabel: summaryLabel, supportedPIDs: supportedPIDs, protocolDescription: protocolDescription, adapterDetails: adapterDetails)
         recorder.finish(summary: summary)
     }
 
