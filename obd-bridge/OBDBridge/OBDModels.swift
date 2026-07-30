@@ -316,7 +316,7 @@ final class DiagnosticSessionRecorder: ObservableObject {
         writeJSONEvent(type: "session_end", fields: payload)
         try? transcriptHandle?.synchronize(); try? csvHandle?.synchronize(); try? eventsHandle?.synchronize(); try? transcriptHandle?.close(); try? csvHandle?.close(); try? eventsHandle?.close()
         transcriptHandle = nil; csvHandle = nil; eventsHandle = nil
-        lastExportURLs = [directory.appendingPathComponent("summary.json"),directory.appendingPathComponent("samples.csv"),directory.appendingPathComponent("raw-transcript.txt"),directory.appendingPathComponent("events.jsonl")].filter { FileManager.default.fileExists(atPath: $0.path) }
+        lastExportURLs = [directory.appendingPathComponent("ai-snapshot.json"),directory.appendingPathComponent("professional-samples.jsonl"),directory.appendingPathComponent("summary.json"),directory.appendingPathComponent("samples.csv"),directory.appendingPathComponent("raw-transcript.txt"),directory.appendingPathComponent("events.jsonl")].filter { FileManager.default.fileExists(atPath: $0.path) }
         currentDirectory = nil; startedAt = nil
     }
     private func timestamp() -> String { let f = DateFormatter(); f.dateFormat = "HH:mm:ss.SSS"; return f.string(from: Date()) }
