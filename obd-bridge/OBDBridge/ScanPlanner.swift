@@ -8,9 +8,14 @@ enum SignalSamplingTierV1: String, Codable, CaseIterable {
 }
 
 struct PlannedDiagnosticReadV1: Codable, Hashable, Identifiable {
-    var id: String { "\(signal.description):\(phaseID)" }
+    var id: String {
+        [phaseID, request.header, request.service, request.identifier]
+            .compactMap { $0?.isEmpty == false ? $0 : nil }
+            .joined(separator: ":")
+    }
 
-    let signal: SignalIdentifierV1
+    /// Every signal decoded from this single transport request.
+    let signals: [SignalIdentifierV1]
     let request: DiagnosticRequestDefinitionV1
     let phaseID: String
     let samplingTier: SignalSamplingTierV1
@@ -64,55 +69,56 @@ struct ProfessionalScanPlannerV1 {
             throw ProfessionalScanPlannerError.scenarioNotFound(scenarioID)
         }
 
-        let definitions = Dictionary(
-            uniqueKeysWithValues: registry.signalDefinitions(for: capability.vehicle).map { ($0.key, $0) }
-        )
-        let supported = Set(capability.supportedSignals)
         let selectedPacks = registry.matchingPacks(for: capability.vehicle).map(\.pack.id)
-
-        var reads: [PlannedDiagnosticReadV1] = []
+        var candidates: [PlannedDiagnosticReadV1] = []
         var missingRequired: [SignalIdentifierV1] = []
         var missingOptional: [SignalIdentifierV1] = []
         var blocked: [SignalIdentifierV1] = []
 
         for phase in scenario.phases {
             for requirement in phase.signals {
-                guard let definition = definitions[requirement.signal] else {
+                let resolved = registry.resolvedDefinitions(for: requirement.signal, vehicle: capability.vehicle)
+                guard !resolved.isEmpty else {
                     (requirement.required ? missingRequired : missingOptional).append(requirement.signal)
                     continue
                 }
-                guard Self.isSafeRead(definition) else {
+
+                let safe = resolved.filter(Self.isSafeRead)
+                if safe.isEmpty {
                     blocked.append(requirement.signal)
                     continue
                 }
-                guard supported.isEmpty || supported.contains(requirement.signal) else {
+
+                let available = safe.filter { capability.supports($0.key) }
+                guard !available.isEmpty else {
                     (requirement.required ? missingRequired : missingOptional).append(requirement.signal)
                     continue
                 }
 
-                let requestedRate = requirement.targetFrequencyHz
-                    ?? definition.preferredFrequencyHz
-                    ?? Self.defaultFrequency(for: definition.category)
-                let cappedRate = min(requestedRate, definition.maximumFrequencyHz ?? requestedRate)
-                let tier = Self.tier(for: cappedRate, phaseDuration: phase.minimumDurationSeconds)
-
-                reads.append(
-                    PlannedDiagnosticReadV1(
-                        signal: definition.key,
-                        request: definition.request,
-                        phaseID: phase.id,
-                        samplingTier: tier,
-                        targetFrequencyHz: max(0.05, cappedRate),
-                        priority: requirement.required ? 100 : Self.priority(for: definition.category),
-                        required: requirement.required,
-                        safety: definition.safety,
-                        rationale: requirement.rationale
+                for definition in available {
+                    let requestedRate = requirement.targetFrequencyHz
+                        ?? definition.preferredFrequencyHz
+                        ?? Self.defaultFrequency(for: definition.category)
+                    let cappedRate = min(requestedRate, definition.maximumFrequencyHz ?? requestedRate)
+                    candidates.append(
+                        PlannedDiagnosticReadV1(
+                            signals: [definition.key],
+                            request: definition.request,
+                            phaseID: phase.id,
+                            samplingTier: Self.tier(for: cappedRate, phaseDuration: phase.minimumDurationSeconds),
+                            targetFrequencyHz: max(0.05, cappedRate),
+                            priority: requirement.required ? 100 : Self.priority(for: definition.category),
+                            required: requirement.required,
+                            safety: definition.safety,
+                            rationale: requirement.rationale
+                        )
                     )
-                )
+                }
             }
         }
 
-        guard !reads.isEmpty else { throw ProfessionalScanPlannerError.noReadableSignals }
+        let coalesced = Self.coalesce(candidates)
+        guard !coalesced.isEmpty else { throw ProfessionalScanPlannerError.noReadableSignals }
 
         let budget = max(
             1,
@@ -120,7 +126,7 @@ struct ProfessionalScanPlannerV1 {
                 ?? capability.adapter.maximumRequestsPerSecond
                 ?? Self.defaultAdapterBudget(for: capability.vehicle.diagnosticProtocol)
         )
-        let balanced = Self.balance(reads: reads, budget: budget)
+        let balanced = Self.balance(reads: coalesced, budget: budget)
         var warnings: [String] = []
         if !missingRequired.isEmpty {
             warnings.append("Some required signals are unavailable; AI confidence must be reduced.")
@@ -149,20 +155,19 @@ struct ProfessionalScanPlannerV1 {
         capability: DiagnosticCapabilityReportV1,
         requestBudgetPerSecond: Double? = nil
     ) throws -> DiagnosticReadPlanV1 {
-        let supported = Set(capability.supportedSignals)
         let selectedPacks = registry.matchingPacks(for: capability.vehicle).map(\.pack.id)
         var blocked: [SignalIdentifierV1] = []
+        var candidates: [PlannedDiagnosticReadV1] = []
 
-        var reads: [PlannedDiagnosticReadV1] = []
         for definition in registry.signalDefinitions(for: capability.vehicle) {
-            guard supported.isEmpty || supported.contains(definition.key) else { continue }
+            guard capability.supports(definition.key) else { continue }
             guard Self.isSafeRead(definition) else {
                 blocked.append(definition.key)
                 continue
             }
-            reads.append(
+            candidates.append(
                 PlannedDiagnosticReadV1(
-                    signal: definition.key,
+                    signals: [definition.key],
                     request: definition.request,
                     phaseID: "full-snapshot",
                     samplingTier: .oneShot,
@@ -175,7 +180,8 @@ struct ProfessionalScanPlannerV1 {
             )
         }
 
-        guard !reads.isEmpty else { throw ProfessionalScanPlannerError.noReadableSignals }
+        let coalesced = Self.coalesce(candidates)
+        guard !coalesced.isEmpty else { throw ProfessionalScanPlannerError.noReadableSignals }
 
         let budget = max(
             1,
@@ -183,7 +189,7 @@ struct ProfessionalScanPlannerV1 {
                 ?? capability.adapter.maximumRequestsPerSecond
                 ?? Self.defaultAdapterBudget(for: capability.vehicle.diagnosticProtocol)
         )
-        let balanced = Self.balance(reads: reads, budget: budget)
+        let balanced = Self.balance(reads: coalesced, budget: budget)
 
         return DiagnosticReadPlanV1(
             schemaVersion: "1.0",
@@ -200,6 +206,48 @@ struct ProfessionalScanPlannerV1 {
         )
     }
 
+    private struct RequestGroupKey: Hashable {
+        let phaseID: String
+        let service: String
+        let identifier: String
+        let header: String?
+        let session: String?
+        let subfunction: String?
+    }
+
+    /// Coalesces multiple decoded signals into one physical PID/DID/CAN request.
+    private static func coalesce(_ reads: [PlannedDiagnosticReadV1]) -> [PlannedDiagnosticReadV1] {
+        let groups = Dictionary(grouping: reads) { read in
+            RequestGroupKey(
+                phaseID: read.phaseID,
+                service: read.request.service,
+                identifier: read.request.identifier,
+                header: read.request.header,
+                session: read.request.session,
+                subfunction: read.request.subfunction
+            )
+        }
+
+        return groups.values.map { group in
+            let first = group[0]
+            let signals = unique(group.flatMap(\.signals))
+            let rationales = Array(Set(group.compactMap(\.rationale))).sorted()
+            let targetRate = group.map(\.targetFrequencyHz).max() ?? first.targetFrequencyHz
+            return PlannedDiagnosticReadV1(
+                signals: signals,
+                request: first.request,
+                phaseID: first.phaseID,
+                samplingTier: group.map(\.samplingTier).contains(.fast) ? .fast : first.samplingTier,
+                targetFrequencyHz: targetRate,
+                priority: group.map(\.priority).max() ?? first.priority,
+                required: group.contains(where: \.required),
+                safety: group.allSatisfy { $0.safety == .passive } ? .passive : .readOnly,
+                rationale: rationales.isEmpty ? nil : rationales.joined(separator: "; ")
+            )
+        }
+        .sorted(by: Self.readSort)
+    }
+
     private static func isSafeRead(_ definition: DiagnosticSignalDefinitionV1) -> Bool {
         guard definition.safety == .passive || definition.safety == .readOnly else { return false }
         let service = definition.request.service.uppercased()
@@ -213,9 +261,7 @@ struct ProfessionalScanPlannerV1 {
 
     private static func balance(reads: [PlannedDiagnosticReadV1], budget: Double) -> [PlannedDiagnosticReadV1] {
         let total = reads.reduce(0) { $0 + $1.targetFrequencyHz }
-        guard total > budget else {
-            return reads.sorted { ($0.priority, $0.signal.description) > ($1.priority, $1.signal.description) }
-        }
+        guard total > budget else { return reads.sorted(by: readSort) }
 
         let requiredRate = reads.filter(\.required).reduce(0) { $0 + $1.targetFrequencyHz }
         let optionalRate = max(0.001, total - requiredRate)
@@ -231,7 +277,7 @@ struct ProfessionalScanPlannerV1 {
                 newRate = max(0.05, read.targetFrequencyHz * scale)
             }
             return PlannedDiagnosticReadV1(
-                signal: read.signal,
+                signals: read.signals,
                 request: read.request,
                 phaseID: read.phaseID,
                 samplingTier: tier(for: newRate, phaseDuration: 60),
@@ -242,7 +288,12 @@ struct ProfessionalScanPlannerV1 {
                 rationale: read.rationale
             )
         }
-        .sorted { ($0.priority, $0.signal.description) > ($1.priority, $1.signal.description) }
+        .sorted(by: readSort)
+    }
+
+    private static func readSort(_ lhs: PlannedDiagnosticReadV1, _ rhs: PlannedDiagnosticReadV1) -> Bool {
+        if lhs.priority != rhs.priority { return lhs.priority > rhs.priority }
+        return lhs.id < rhs.id
     }
 
     private static func defaultAdapterBudget(for protocolName: DiagnosticApplicationProtocol) -> Double {
