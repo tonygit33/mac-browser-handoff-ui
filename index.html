@@ -62,7 +62,7 @@ function refreshFrame(){if(closed)return;const next=relayUrl('frame');frame.onlo
 function schedule(){clearInterval(refreshTimer);refreshTimer=setInterval(()=>{if(document.visibilityState==='visible')refreshFrame()},950)}
 function closeKeyboard(){keyboard.classList.remove('open');text.blur()}
 function openKeyboard(){keyboard.classList.add('open');setTimeout(()=>text.focus(),50)}
-function finish(){closed=true;clearInterval(refreshTimer);command({op:'done'});document.getElementById('closed').classList.add('show')}
+function finish(){if(closed)return;sendNow({op:'done'});closed=true;clearInterval(refreshTimer);document.getElementById('closed').classList.add('show')}
 
 stage.addEventListener('pointerdown',e=>{
   stage.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY,t:Date.now()});
