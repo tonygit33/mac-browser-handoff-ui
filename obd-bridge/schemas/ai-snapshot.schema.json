@@ -36,11 +36,13 @@
   "$defs": {
     "signalKey": {
       "type": "object",
+      "additionalProperties": false,
       "required": ["namespace", "service", "identifier", "ecuAddress"],
       "properties": {
         "namespace": {"type": "string"},
         "service": {"type": "string"},
         "identifier": {"type": "string"},
+        "signalID": {"type": ["string", "null"]},
         "ecuAddress": {"type": ["string", "null"]}
       }
     },
