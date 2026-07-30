@@ -8,6 +8,7 @@ on:
       - ".github/workflows/build-obd-bridge.yml"
   push:
     branches:
+      - main
       - obd-bridge-mvp
     paths:
       - "obd-bridge/**"
