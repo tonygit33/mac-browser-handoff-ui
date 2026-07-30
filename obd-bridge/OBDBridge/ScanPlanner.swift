@@ -79,7 +79,11 @@ struct ProfessionalScanPlannerV1 {
             for requirement in phase.signals {
                 let resolved = registry.resolvedDefinitions(for: requirement.signal, vehicle: capability.vehicle)
                 guard !resolved.isEmpty else {
-                    (requirement.required ? missingRequired : missingOptional).append(requirement.signal)
+                    if requirement.required {
+                        missingRequired.append(requirement.signal)
+                    } else {
+                        missingOptional.append(requirement.signal)
+                    }
                     continue
                 }
 
@@ -91,7 +95,11 @@ struct ProfessionalScanPlannerV1 {
 
                 let available = safe.filter { capability.supports($0.key) }
                 guard !available.isEmpty else {
-                    (requirement.required ? missingRequired : missingOptional).append(requirement.signal)
+                    if requirement.required {
+                        missingRequired.append(requirement.signal)
+                    } else {
+                        missingOptional.append(requirement.signal)
+                    }
                     continue
                 }
 
@@ -240,7 +248,7 @@ struct ProfessionalScanPlannerV1 {
                 samplingTier: group.map(\.samplingTier).contains(.fast) ? .fast : first.samplingTier,
                 targetFrequencyHz: targetRate,
                 priority: group.map(\.priority).max() ?? first.priority,
-                required: group.contains(where: \.required),
+                required: group.contains(where: { $0.required }),
                 safety: group.allSatisfy { $0.safety == .passive } ? .passive : .readOnly,
                 rationale: rationales.isEmpty ? nil : rationales.joined(separator: "; ")
             )
