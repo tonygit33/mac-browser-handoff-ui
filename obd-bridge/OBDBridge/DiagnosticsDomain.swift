@@ -175,10 +175,12 @@ struct SignalIdentifierV1: Codable, Hashable, CustomStringConvertible {
     let namespace: String
     let service: String
     let identifier: String
+    /// Distinguishes multiple signals decoded from the same PID, DID, or CAN frame.
+    let signalID: String?
     let ecuAddress: String?
 
     var description: String {
-        [namespace, ecuAddress, service, identifier]
+        [namespace, ecuAddress, service, identifier, signalID]
             .compactMap { $0?.isEmpty == false ? $0 : nil }
             .joined(separator: ":")
     }
