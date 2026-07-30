@@ -33,7 +33,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache: pip
 
       - name: Install validators and optional database compiler
         run: python -m pip install --disable-pip-version-check "jsonschema[format]>=4.23,<5" "cantools>=41,<42"
