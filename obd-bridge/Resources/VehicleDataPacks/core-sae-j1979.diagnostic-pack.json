@@ -1,0 +1,357 @@
+{
+  "schemaVersion": "1.0",
+  "id": "core.sae-j1979",
+  "version": "2025.05-obdb-1",
+  "displayName": "SAE J1979 Core Signals",
+  "matcher": {
+    "makes": [],
+    "models": [],
+    "minimumYear": null,
+    "maximumYear": null,
+    "vinPrefixes": [],
+    "enginePatterns": [],
+    "calibrationIDPrefixes": [],
+    "requiredECUAddresses": []
+  },
+  "provenance": {
+    "id": "obdb.saej1979",
+    "name": "OBDb SAEJ1979 Standard PIDs",
+    "version": "2025.05-obdb-1",
+    "kind": "sae",
+    "license": "CC-BY-SA-4.0",
+    "sourceURL": "https://github.com/OBDb/SAEJ1979",
+    "checksum": null,
+    "attribution": "Derived from OBDb SAEJ1979; verify generated packs against the pinned upstream revision.",
+    "confidence": 0.95
+  },
+  "signals": [
+    {
+      "key": {"namespace":"sae","service":"01","identifier":"04","ecuAddress":null},
+      "name": "Calculated engine load",
+      "descriptionText": "Calculated engine load value reported by the powertrain ECU.",
+      "category": "load",
+      "request": {"service":"01","identifier":"04","header":null,"session":null,"subfunction":null,"timeoutMilliseconds":2500,"responsePrefix":"4104"},
+      "decode": {"kind":"expression","startBit":0,"bitLength":8,"endian":"big","isSigned":false,"factor":0.3921568627,"offset":0,"unit":"percent","expression":"A*100/255","lookup":null},
+      "safety": "readOnly",
+      "preferredFrequencyHz": 2,
+      "maximumFrequencyHz": 10,
+      "expectedRange": {"minimum":0,"maximum":100,"unit":"percent","conditions":[]},
+      "preconditions": ["ignition-on"],
+      "tags": ["engine","load"],
+      "provenance": {"id":"obdb.saej1979","name":"OBDb SAEJ1979 Standard PIDs","version":"2025.05-obdb-1","kind":"sae","license":"CC-BY-SA-4.0","sourceURL":"https://github.com/OBDb/SAEJ1979","checksum":null,"attribution":"OBDb SAEJ1979","confidence":0.95}
+    },
+    {
+      "key": {"namespace":"sae","service":"01","identifier":"05","ecuAddress":null},
+      "name": "Engine coolant temperature",
+      "descriptionText": "Engine coolant temperature.",
+      "category": "temperature",
+      "request": {"service":"01","identifier":"05","header":null,"session":null,"subfunction":null,"timeoutMilliseconds":2500,"responsePrefix":"4105"},
+      "decode": {"kind":"linear","startBit":0,"bitLength":8,"endian":"big","isSigned":false,"factor":1,"offset":-40,"unit":"celsius","expression":"A-40","lookup":null},
+      "safety": "readOnly",
+      "preferredFrequencyHz": 1,
+      "maximumFrequencyHz": 5,
+      "expectedRange": {"minimum":-40,"maximum":215,"unit":"celsius","conditions":[]},
+      "preconditions": ["ignition-on"],
+      "tags": ["engine","temperature","warmup"],
+      "provenance": {"id":"obdb.saej1979","name":"OBDb SAEJ1979 Standard PIDs","version":"2025.05-obdb-1","kind":"sae","license":"CC-BY-SA-4.0","sourceURL":"https://github.com/OBDb/SAEJ1979","checksum":null,"attribution":"OBDb SAEJ1979","confidence":0.95}
+    },
+    {
+      "key": {"namespace":"sae","service":"01","identifier":"06","ecuAddress":null},
+      "name": "Short-term fuel trim bank 1",
+      "descriptionText": "Immediate closed-loop fuel correction for bank 1.",
+      "category": "fuel-trim",
+      "request": {"service":"01","identifier":"06","header":null,"session":null,"subfunction":null,"timeoutMilliseconds":2500,"responsePrefix":"4106"},
+      "decode": {"kind":"expression","startBit":0,"bitLength":8,"endian":"big","isSigned":false,"factor":0.78125,"offset":-100,"unit":"percent","expression":"(A-128)*100/128","lookup":null},
+      "safety": "readOnly",
+      "preferredFrequencyHz": 5,
+      "maximumFrequencyHz": 15,
+      "expectedRange": {"minimum":-100,"maximum":99.21875,"unit":"percent","conditions":[]},
+      "preconditions": ["engine-running"],
+      "tags": ["fuel","closed-loop","bank-1"],
+      "provenance": {"id":"obdb.saej1979","name":"OBDb SAEJ1979 Standard PIDs","version":"2025.05-obdb-1","kind":"sae","license":"CC-BY-SA-4.0","sourceURL":"https://github.com/OBDb/SAEJ1979","checksum":null,"attribution":"OBDb SAEJ1979","confidence":0.95}
+    },
+    {
+      "key": {"namespace":"sae","service":"01","identifier":"07","ecuAddress":null},
+      "name": "Long-term fuel trim bank 1",
+      "descriptionText": "Learned fuel correction for bank 1.",
+      "category": "fuel-trim",
+      "request": {"service":"01","identifier":"07","header":null,"session":null,"subfunction":null,"timeoutMilliseconds":2500,"responsePrefix":"4107"},
+      "decode": {"kind":"expression","startBit":0,"bitLength":8,"endian":"big","isSigned":false,"factor":0.78125,"offset":-100,"unit":"percent","expression":"(A-128)*100/128","lookup":null},
+      "safety": "readOnly",
+      "preferredFrequencyHz": 2,
+      "maximumFrequencyHz": 10,
+      "expectedRange": {"minimum":-100,"maximum":99.21875,"unit":"percent","conditions":[]},
+      "preconditions": ["engine-running"],
+      "tags": ["fuel","adaptation","bank-1"],
+      "provenance": {"id":"obdb.saej1979","name":"OBDb SAEJ1979 Standard PIDs","version":"2025.05-obdb-1","kind":"sae","license":"CC-BY-SA-4.0","sourceURL":"https://github.com/OBDb/SAEJ1979","checksum":null,"attribution":"OBDb SAEJ1979","confidence":0.95}
+    },
+    {
+      "key": {"namespace":"sae","service":"01","identifier":"0B","ecuAddress":null},
+      "name": "Intake manifold absolute pressure",
+      "descriptionText": "Absolute pressure in the intake manifold.",
+      "category": "pressure",
+      "request": {"service":"01","identifier":"0B","header":null,"session":null,"subfunction":null,"timeoutMilliseconds":2500,"responsePrefix":"410B"},
+      "decode": {"kind":"linear","startBit":0,"bitLength":8,"endian":"big","isSigned":false,"factor":1,"offset":0,"unit":"kilopascal","expression":"A","lookup":null},
+      "safety": "readOnly",
+      "preferredFrequencyHz": 5,
+      "maximumFrequencyHz": 15,
+      "expectedRange": {"minimum":0,"maximum":255,"unit":"kilopascal","conditions":[]},
+      "preconditions": ["ignition-on"],
+      "tags": ["air","load","map"],
+      "provenance": {"id":"obdb.saej1979","name":"OBDb SAEJ1979 Standard PIDs","version":"2025.05-obdb-1","kind":"sae","license":"CC-BY-SA-4.0","sourceURL":"https://github.com/OBDb/SAEJ1979","checksum":null,"attribution":"OBDb SAEJ1979","confidence":0.95}
+    },
+    {
+      "key": {"namespace":"sae","service":"01","identifier":"0C","ecuAddress":null},
+      "name": "Engine speed",
+      "descriptionText": "Engine crankshaft speed.",
+      "category": "engine-speed",
+      "request": {"service":"01","identifier":"0C","header":null,"session":null,"subfunction":null,"timeoutMilliseconds":2500,"responsePrefix":"410C"},
+      "decode": {"kind":"expression","startBit":0,"bitLength":16,"endian":"big","isSigned":false,"factor":0.25,"offset":0,"unit":"revolutionsPerMinute","expression":"(A*256+B)/4","lookup":null},
+      "safety": "readOnly",
+      "preferredFrequencyHz": 5,
+      "maximumFrequencyHz": 20,
+      "expectedRange": {"minimum":0,"maximum":16383.75,"unit":"revolutionsPerMinute","conditions":[]},
+      "preconditions": ["ignition-on"],
+      "tags": ["engine","speed","synchronization"],
+      "provenance": {"id":"obdb.saej1979","name":"OBDb SAEJ1979 Standard PIDs","version":"2025.05-obdb-1","kind":"sae","license":"CC-BY-SA-4.0","sourceURL":"https://github.com/OBDb/SAEJ1979","checksum":null,"attribution":"OBDb SAEJ1979","confidence":0.95}
+    },
+    {
+      "key": {"namespace":"sae","service":"01","identifier":"0D","ecuAddress":null},
+      "name": "Vehicle speed",
+      "descriptionText": "Vehicle road speed reported by the powertrain ECU.",
+      "category": "vehicle-speed",
+      "request": {"service":"01","identifier":"0D","header":null,"session":null,"subfunction":null,"timeoutMilliseconds":2500,"responsePrefix":"410D"},
+      "decode": {"kind":"linear","startBit":0,"bitLength":8,"endian":"big","isSigned":false,"factor":1,"offset":0,"unit":"kilometresPerHour","expression":"A","lookup":null},
+      "safety": "readOnly",
+      "preferredFrequencyHz": 5,
+      "maximumFrequencyHz": 15,
+      "expectedRange": {"minimum":0,"maximum":255,"unit":"kilometresPerHour","conditions":[]},
+      "preconditions": ["ignition-on"],
+      "tags": ["vehicle","speed"],
+      "provenance": {"id":"obdb.saej1979","name":"OBDb SAEJ1979 Standard PIDs","version":"2025.05-obdb-1","kind":"sae","license":"CC-BY-SA-4.0","sourceURL":"https://github.com/OBDb/SAEJ1979","checksum":null,"attribution":"OBDb SAEJ1979","confidence":0.95}
+    },
+    {
+      "key": {"namespace":"sae","service":"01","identifier":"0F","ecuAddress":null},
+      "name": "Intake air temperature",
+      "descriptionText": "Temperature of intake air.",
+      "category": "temperature",
+      "request": {"service":"01","identifier":"0F","header":null,"session":null,"subfunction":null,"timeoutMilliseconds":2500,"responsePrefix":"410F"},
+      "decode": {"kind":"linear","startBit":0,"bitLength":8,"endian":"big","isSigned":false,"factor":1,"offset":-40,"unit":"celsius","expression":"A-40","lookup":null},
+      "safety": "readOnly",
+      "preferredFrequencyHz": 1,
+      "maximumFrequencyHz": 5,
+      "expectedRange": {"minimum":-40,"maximum":215,"unit":"celsius","conditions":[]},
+      "preconditions": ["ignition-on"],
+      "tags": ["air","temperature"],
+      "provenance": {"id":"obdb.saej1979","name":"OBDb SAEJ1979 Standard PIDs","version":"2025.05-obdb-1","kind":"sae","license":"CC-BY-SA-4.0","sourceURL":"https://github.com/OBDb/SAEJ1979","checksum":null,"attribution":"OBDb SAEJ1979","confidence":0.95}
+    },
+    {
+      "key": {"namespace":"sae","service":"01","identifier":"10","ecuAddress":null},
+      "name": "Mass air flow rate",
+      "descriptionText": "Mass air flow entering the engine.",
+      "category": "airflow",
+      "request": {"service":"01","identifier":"10","header":null,"session":null,"subfunction":null,"timeoutMilliseconds":2500,"responsePrefix":"4110"},
+      "decode": {"kind":"expression","startBit":0,"bitLength":16,"endian":"big","isSigned":false,"factor":0.01,"offset":0,"unit":"gramsPerSecond","expression":"(A*256+B)/100","lookup":null},
+      "safety": "readOnly",
+      "preferredFrequencyHz": 5,
+      "maximumFrequencyHz": 15,
+      "expectedRange": {"minimum":0,"maximum":655.35,"unit":"gramsPerSecond","conditions":[]},
+      "preconditions": ["engine-running"],
+      "tags": ["air","maf","load"],
+      "provenance": {"id":"obdb.saej1979","name":"OBDb SAEJ1979 Standard PIDs","version":"2025.05-obdb-1","kind":"sae","license":"CC-BY-SA-4.0","sourceURL":"https://github.com/OBDb/SAEJ1979","checksum":null,"attribution":"OBDb SAEJ1979","confidence":0.95}
+    },
+    {
+      "key": {"namespace":"sae","service":"01","identifier":"11","ecuAddress":null},
+      "name": "Throttle position",
+      "descriptionText": "Commanded or measured throttle position, depending on vehicle implementation.",
+      "category": "throttle",
+      "request": {"service":"01","identifier":"11","header":null,"session":null,"subfunction":null,"timeoutMilliseconds":2500,"responsePrefix":"4111"},
+      "decode": {"kind":"expression","startBit":0,"bitLength":8,"endian":"big","isSigned":false,"factor":0.3921568627,"offset":0,"unit":"percent","expression":"A*100/255","lookup":null},
+      "safety": "readOnly",
+      "preferredFrequencyHz": 5,
+      "maximumFrequencyHz": 15,
+      "expectedRange": {"minimum":0,"maximum":100,"unit":"percent","conditions":[]},
+      "preconditions": ["ignition-on"],
+      "tags": ["throttle","air","driver-demand"],
+      "provenance": {"id":"obdb.saej1979","name":"OBDb SAEJ1979 Standard PIDs","version":"2025.05-obdb-1","kind":"sae","license":"CC-BY-SA-4.0","sourceURL":"https://github.com/OBDb/SAEJ1979","checksum":null,"attribution":"OBDb SAEJ1979","confidence":0.95}
+    },
+    {
+      "key": {"namespace":"sae","service":"01","identifier":"14","ecuAddress":null},
+      "name": "Oxygen sensor 1 voltage",
+      "descriptionText": "Conventional oxygen sensor bank 1 sensor 1 voltage.",
+      "category": "oxygen",
+      "request": {"service":"01","identifier":"14","header":null,"session":null,"subfunction":null,"timeoutMilliseconds":2500,"responsePrefix":"4114"},
+      "decode": {"kind":"linear","startBit":0,"bitLength":8,"endian":"big","isSigned":false,"factor":0.005,"offset":0,"unit":"volt","expression":"A/200","lookup":null},
+      "safety": "readOnly",
+      "preferredFrequencyHz": 5,
+      "maximumFrequencyHz": 15,
+      "expectedRange": {"minimum":0,"maximum":1.275,"unit":"volt","conditions":[]},
+      "preconditions": ["engine-running"],
+      "tags": ["oxygen","lambda","bank-1","sensor-1"],
+      "provenance": {"id":"obdb.saej1979","name":"OBDb SAEJ1979 Standard PIDs","version":"2025.05-obdb-1","kind":"sae","license":"CC-BY-SA-4.0","sourceURL":"https://github.com/OBDb/SAEJ1979","checksum":null,"attribution":"OBDb SAEJ1979","confidence":0.95}
+    },
+    {
+      "key": {"namespace":"sae","service":"01","identifier":"42","ecuAddress":null},
+      "name": "Control module voltage",
+      "descriptionText": "Voltage measured by the control module.",
+      "category": "voltage",
+      "request": {"service":"01","identifier":"42","header":null,"session":null,"subfunction":null,"timeoutMilliseconds":2500,"responsePrefix":"4142"},
+      "decode": {"kind":"expression","startBit":0,"bitLength":16,"endian":"big","isSigned":false,"factor":0.001,"offset":0,"unit":"volt","expression":"(A*256+B)/1000","lookup":null},
+      "safety": "readOnly",
+      "preferredFrequencyHz": 1,
+      "maximumFrequencyHz": 5,
+      "expectedRange": {"minimum":0,"maximum":65.535,"unit":"volt","conditions":[]},
+      "preconditions": ["ignition-on"],
+      "tags": ["electrical","voltage"],
+      "provenance": {"id":"obdb.saej1979","name":"OBDb SAEJ1979 Standard PIDs","version":"2025.05-obdb-1","kind":"sae","license":"CC-BY-SA-4.0","sourceURL":"https://github.com/OBDb/SAEJ1979","checksum":null,"attribution":"OBDb SAEJ1979","confidence":0.95}
+    },
+    {
+      "key": {"namespace":"sae","service":"01","identifier":"49","ecuAddress":null},
+      "name": "Accelerator pedal position D",
+      "descriptionText": "Accelerator pedal position channel D when supported.",
+      "category": "pedal",
+      "request": {"service":"01","identifier":"49","header":null,"session":null,"subfunction":null,"timeoutMilliseconds":2500,"responsePrefix":"4149"},
+      "decode": {"kind":"expression","startBit":0,"bitLength":8,"endian":"big","isSigned":false,"factor":0.3921568627,"offset":0,"unit":"percent","expression":"A*100/255","lookup":null},
+      "safety": "readOnly",
+      "preferredFrequencyHz": 5,
+      "maximumFrequencyHz": 15,
+      "expectedRange": {"minimum":0,"maximum":100,"unit":"percent","conditions":[]},
+      "preconditions": ["ignition-on"],
+      "tags": ["pedal","driver-demand"],
+      "provenance": {"id":"obdb.saej1979","name":"OBDb SAEJ1979 Standard PIDs","version":"2025.05-obdb-1","kind":"sae","license":"CC-BY-SA-4.0","sourceURL":"https://github.com/OBDb/SAEJ1979","checksum":null,"attribution":"OBDb SAEJ1979","confidence":0.95}
+    },
+    {
+      "key": {"namespace":"sae","service":"01","identifier":"5E","ecuAddress":null},
+      "name": "Engine fuel rate",
+      "descriptionText": "Fuel consumption rate reported by the ECU when supported.",
+      "category": "fuel-rate",
+      "request": {"service":"01","identifier":"5E","header":null,"session":null,"subfunction":null,"timeoutMilliseconds":2500,"responsePrefix":"415E"},
+      "decode": {"kind":"expression","startBit":0,"bitLength":16,"endian":"big","isSigned":false,"factor":0.05,"offset":0,"unit":"litresPerHour","expression":"(A*256+B)*0.05","lookup":null},
+      "safety": "readOnly",
+      "preferredFrequencyHz": 2,
+      "maximumFrequencyHz": 10,
+      "expectedRange": {"minimum":0,"maximum":3276.75,"unit":"litresPerHour","conditions":[]},
+      "preconditions": ["engine-running"],
+      "tags": ["fuel","consumption"],
+      "provenance": {"id":"obdb.saej1979","name":"OBDb SAEJ1979 Standard PIDs","version":"2025.05-obdb-1","kind":"sae","license":"CC-BY-SA-4.0","sourceURL":"https://github.com/OBDb/SAEJ1979","checksum":null,"attribution":"OBDb SAEJ1979","confidence":0.95}
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "generic.cold-start",
+      "title": "Cold start and warm-up",
+      "descriptionText": "Capture the transition from key-on through start and initial warm-up.",
+      "tags": ["cold-start","fuel","air","electrical"],
+      "phases": [
+        {
+          "id": "key-on-engine-off",
+          "title": "Key on, engine off",
+          "instructions": "Switch ignition on without starting the engine and wait five seconds.",
+          "minimumDurationSeconds": 5,
+          "maximumDurationSeconds": 20,
+          "entryConditions": ["engine-speed=0"],
+          "exitConditions": ["user-marker=start-engine"],
+          "signals": [
+            {"signal":{"namespace":"sae","service":"01","identifier":"05","ecuAddress":null},"required":true,"targetFrequencyHz":1,"rationale":"Cold-soak reference"},
+            {"signal":{"namespace":"sae","service":"01","identifier":"0F","ecuAddress":null},"required":true,"targetFrequencyHz":1,"rationale":"Compare coolant and intake temperatures"},
+            {"signal":{"namespace":"sae","service":"01","identifier":"42","ecuAddress":null},"required":false,"targetFrequencyHz":2,"rationale":"Cranking voltage reference"}
+          ]
+        },
+        {
+          "id": "crank-and-warmup",
+          "title": "Crank and initial warm-up",
+          "instructions": "Start the engine without pressing the accelerator and let it idle.",
+          "minimumDurationSeconds": 120,
+          "maximumDurationSeconds": 600,
+          "entryConditions": ["engine-speed>0"],
+          "exitConditions": ["coolant-temperature>=70", "user-stop"],
+          "signals": [
+            {"signal":{"namespace":"sae","service":"01","identifier":"0C","ecuAddress":null},"required":true,"targetFrequencyHz":5,"rationale":"Start and idle stability"},
+            {"signal":{"namespace":"sae","service":"01","identifier":"05","ecuAddress":null},"required":true,"targetFrequencyHz":1,"rationale":"Warm-up curve"},
+            {"signal":{"namespace":"sae","service":"01","identifier":"06","ecuAddress":null},"required":false,"targetFrequencyHz":5,"rationale":"Immediate fueling response"},
+            {"signal":{"namespace":"sae","service":"01","identifier":"07","ecuAddress":null},"required":false,"targetFrequencyHz":2,"rationale":"Learned fueling correction"},
+            {"signal":{"namespace":"sae","service":"01","identifier":"0B","ecuAddress":null},"required":false,"targetFrequencyHz":5,"rationale":"Vacuum and load response"},
+            {"signal":{"namespace":"sae","service":"01","identifier":"10","ecuAddress":null},"required":false,"targetFrequencyHz":5,"rationale":"Airflow response"},
+            {"signal":{"namespace":"sae","service":"01","identifier":"42","ecuAddress":null},"required":false,"targetFrequencyHz":2,"rationale":"Charging voltage"}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "generic.warm-idle-2500",
+      "title": "Warm idle and 2500 RPM comparison",
+      "descriptionText": "Compare fuel, air, pressure, oxygen and driver-demand signals at warm idle and steady 2500 RPM.",
+      "tags": ["idle","2500-rpm","fuel-trim","airflow"],
+      "phases": [
+        {
+          "id": "warm-idle",
+          "title": "Warm idle",
+          "instructions": "Warm the engine fully, switch off major electrical loads, and idle for 60 seconds.",
+          "minimumDurationSeconds": 60,
+          "maximumDurationSeconds": 120,
+          "entryConditions": ["coolant-temperature>=75", "vehicle-speed=0"],
+          "exitConditions": ["phase-duration>=60"],
+          "signals": [
+            {"signal":{"namespace":"sae","service":"01","identifier":"0C","ecuAddress":null},"required":true,"targetFrequencyHz":5,"rationale":"Idle stability"},
+            {"signal":{"namespace":"sae","service":"01","identifier":"06","ecuAddress":null},"required":true,"targetFrequencyHz":5,"rationale":"Short-term correction"},
+            {"signal":{"namespace":"sae","service":"01","identifier":"07","ecuAddress":null},"required":true,"targetFrequencyHz":2,"rationale":"Long-term correction"},
+            {"signal":{"namespace":"sae","service":"01","identifier":"0B","ecuAddress":null},"required":false,"targetFrequencyHz":5,"rationale":"Manifold pressure"},
+            {"signal":{"namespace":"sae","service":"01","identifier":"10","ecuAddress":null},"required":false,"targetFrequencyHz":5,"rationale":"Mass airflow"},
+            {"signal":{"namespace":"sae","service":"01","identifier":"11","ecuAddress":null},"required":false,"targetFrequencyHz":5,"rationale":"Throttle angle"},
+            {"signal":{"namespace":"sae","service":"01","identifier":"14","ecuAddress":null},"required":false,"targetFrequencyHz":5,"rationale":"Oxygen feedback"}
+          ]
+        },
+        {
+          "id": "steady-2500-rpm",
+          "title": "Steady 2500 RPM",
+          "instructions": "In Park or Neutral, hold approximately 2500 RPM for 30 seconds if safe for the vehicle.",
+          "minimumDurationSeconds": 30,
+          "maximumDurationSeconds": 60,
+          "entryConditions": ["engine-speed=2300..2700", "vehicle-speed=0"],
+          "exitConditions": ["phase-duration>=30"],
+          "signals": [
+            {"signal":{"namespace":"sae","service":"01","identifier":"0C","ecuAddress":null},"required":true,"targetFrequencyHz":5,"rationale":"Verify steady test condition"},
+            {"signal":{"namespace":"sae","service":"01","identifier":"06","ecuAddress":null},"required":true,"targetFrequencyHz":5,"rationale":"Fuel correction off-idle"},
+            {"signal":{"namespace":"sae","service":"01","identifier":"07","ecuAddress":null},"required":true,"targetFrequencyHz":2,"rationale":"Learned correction comparison"},
+            {"signal":{"namespace":"sae","service":"01","identifier":"0B","ecuAddress":null},"required":false,"targetFrequencyHz":5,"rationale":"Pressure comparison"},
+            {"signal":{"namespace":"sae","service":"01","identifier":"10","ecuAddress":null},"required":false,"targetFrequencyHz":5,"rationale":"Airflow comparison"},
+            {"signal":{"namespace":"sae","service":"01","identifier":"11","ecuAddress":null},"required":false,"targetFrequencyHz":5,"rationale":"Throttle comparison"}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "generic.road-load",
+      "title": "Road-load snapshot",
+      "descriptionText": "Capture idle, gentle acceleration, steady cruise and closed-throttle deceleration.",
+      "tags": ["road-test","acceleration","cruise","deceleration"],
+      "phases": [
+        {
+          "id": "road-test",
+          "title": "Controlled road test",
+          "instructions": "Use a safe road and a passenger to operate the phone. Mark idle, acceleration, cruise and deceleration phases.",
+          "minimumDurationSeconds": 180,
+          "maximumDurationSeconds": 900,
+          "entryConditions": ["engine-running"],
+          "exitConditions": ["user-stop"],
+          "signals": [
+            {"signal":{"namespace":"sae","service":"01","identifier":"0C","ecuAddress":null},"required":true,"targetFrequencyHz":5,"rationale":"Engine operating point"},
+            {"signal":{"namespace":"sae","service":"01","identifier":"0D","ecuAddress":null},"required":true,"targetFrequencyHz":5,"rationale":"Vehicle operating point"},
+            {"signal":{"namespace":"sae","service":"01","identifier":"04","ecuAddress":null},"required":false,"targetFrequencyHz":5,"rationale":"Engine load"},
+            {"signal":{"namespace":"sae","service":"01","identifier":"06","ecuAddress":null},"required":false,"targetFrequencyHz":5,"rationale":"Fuel correction"},
+            {"signal":{"namespace":"sae","service":"01","identifier":"07","ecuAddress":null},"required":false,"targetFrequencyHz":2,"rationale":"Learned fuel correction"},
+            {"signal":{"namespace":"sae","service":"01","identifier":"0B","ecuAddress":null},"required":false,"targetFrequencyHz":5,"rationale":"Manifold pressure"},
+            {"signal":{"namespace":"sae","service":"01","identifier":"10","ecuAddress":null},"required":false,"targetFrequencyHz":5,"rationale":"Airflow"},
+            {"signal":{"namespace":"sae","service":"01","identifier":"11","ecuAddress":null},"required":false,"targetFrequencyHz":5,"rationale":"Throttle"},
+            {"signal":{"namespace":"sae","service":"01","identifier":"49","ecuAddress":null},"required":false,"targetFrequencyHz":5,"rationale":"Driver pedal demand"}
+          ]
+        }
+      ]
+    }
+  ],
+  "researchTargets": [],
+  "notes": [
+    "This is a small bootstrap pack. Production builds must generate the complete catalog from a pinned OBDb SAEJ1979 revision.",
+    "Only services classified as passive or read-only are eligible for automatic planning."
+  ]
+}
