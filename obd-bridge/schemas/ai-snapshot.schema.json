@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://obdbridge.local/schemas/ai-snapshot.schema.json",
+  "title": "OBD Bridge AI Diagnostic Snapshot",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion", "id", "createdAt", "appVersion", "appBuild", "captureMode", "readOnly",
+    "vehicle", "capability", "scanPlan", "scenarios", "datasets", "diagnosticCodes",
+    "freezeFrames", "mode06Results", "latestSamples", "coverage", "quality", "provenance",
+    "analysisQuestion", "privacyNotes"
+  ],
+  "properties": {
+    "schemaVersion": {"const": "1.0"},
+    "id": {"type": "string", "format": "uuid"},
+    "createdAt": {"type": "string", "format": "date-time"},
+    "appVersion": {"type": "string"},
+    "appBuild": {"type": "string"},
+    "captureMode": {"type": "string"},
+    "readOnly": {"const": true},
+    "vehicle": {"type": "object"},
+    "capability": {"type": "object"},
+    "scanPlan": {"type": ["object", "null"]},
+    "scenarios": {"type": "array", "items": {"$ref": "#/$defs/scenarioExecution"}},
+    "datasets": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/dataset"}},
+    "diagnosticCodes": {"type": "array", "items": {"$ref": "#/$defs/dtc"}},
+    "freezeFrames": {"type": "array", "items": {"type": "object"}},
+    "mode06Results": {"type": "array", "items": {"type": "object"}},
+    "latestSamples": {"type": "array", "items": {"$ref": "#/$defs/sample"}},
+    "coverage": {"$ref": "#/$defs/coverage"},
+    "quality": {"$ref": "#/$defs/quality"},
+    "provenance": {"type": "array", "items": {"type": "object"}},
+    "analysisQuestion": {"$ref": "#/$defs/question"},
+    "privacyNotes": {"type": "array", "items": {"type": "string"}}
+  },
+  "$defs": {
+    "signalKey": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["namespace", "service", "identifier", "ecuAddress"],
+      "properties": {
+        "namespace": {"type": "string"},
+        "service": {"type": "string"},
+        "identifier": {"type": "string"},
+        "signalID": {"type": ["string", "null"]},
+        "ecuAddress": {"type": ["string", "null"]}
+      }
+    },
+    "dataset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["relativePath", "mediaType", "formatVersion", "rowCount", "startedAt", "endedAt", "checksumSHA256", "compression", "descriptionText"],
+      "properties": {
+        "relativePath": {"type": "string", "pattern": "^(?!/)(?!.*\\.\\.).+$"},
+        "mediaType": {"type": "string"},
+        "formatVersion": {"type": "string"},
+        "rowCount": {"type": ["integer", "null"], "minimum": 0},
+        "startedAt": {"type": ["string", "null"], "format": "date-time"},
+        "endedAt": {"type": ["string", "null"], "format": "date-time"},
+        "checksumSHA256": {"type": ["string", "null"], "pattern": "^[a-fA-F0-9]{64}$"},
+        "compression": {"type": ["string", "null"]},
+        "descriptionText": {"type": "string"}
+      }
+    },
+    "dtc": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "status", "ecuAddress", "descriptionText", "descriptionSource", "rawHex"],
+      "properties": {
+        "code": {"type": "string"},
+        "status": {"type": "string"},
+        "ecuAddress": {"type": ["string", "null"]},
+        "descriptionText": {"type": ["string", "null"]},
+        "descriptionSource": {"type": ["object", "null"]},
+        "rawHex": {"type": "string"}
+      }
+    },
+    "sample": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["timestamp", "monotonicMilliseconds", "signal", "numericValue", "textValue", "unit", "rawHex", "ecuAddress", "quality"],
+      "properties": {
+        "timestamp": {"type": "string", "format": "date-time"},
+        "monotonicMilliseconds": {"type": "integer"},
+        "signal": {"$ref": "#/$defs/signalKey"},
+        "numericValue": {"type": ["number", "null"]},
+        "textValue": {"type": ["string", "null"]},
+        "unit": {"type": ["string", "null"]},
+        "rawHex": {"type": ["string", "null"]},
+        "ecuAddress": {"type": ["string", "null"]},
+        "quality": {"type": "object"}
+      }
+    },
+    "scenarioExecution": {
+      "type": "object",
+      "required": ["id", "scenarioDefinitionID", "title", "startedAt", "endedAt", "completedPhaseIDs", "userMarkers", "entryConditionsMet", "entryConditionsMissing", "notes"],
+      "properties": {
+        "id": {"type": "string"},
+        "scenarioDefinitionID": {"type": "string"},
+        "title": {"type": "string"},
+        "startedAt": {"type": "string", "format": "date-time"},
+        "endedAt": {"type": ["string", "null"], "format": "date-time"},
+        "completedPhaseIDs": {"type": "array", "items": {"type": "string"}},
+        "userMarkers": {"type": "array", "items": {"type": "string"}},
+        "entryConditionsMet": {"type": "array", "items": {"type": "string"}},
+        "entryConditionsMissing": {"type": "array", "items": {"type": "string"}},
+        "notes": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "required": ["discoveredCount", "decodedCount", "rawOnlyCount", "unsupportedCount", "timedOutCount", "missingRequiredSignals", "missingOptionalSignals", "blockedUnsafeSignals"],
+      "properties": {
+        "discoveredCount": {"type": "integer", "minimum": 0},
+        "decodedCount": {"type": "integer", "minimum": 0},
+        "rawOnlyCount": {"type": "integer", "minimum": 0},
+        "unsupportedCount": {"type": "integer", "minimum": 0},
+        "timedOutCount": {"type": "integer", "minimum": 0},
+        "missingRequiredSignals": {"type": "array", "items": {"$ref": "#/$defs/signalKey"}},
+        "missingOptionalSignals": {"type": "array", "items": {"$ref": "#/$defs/signalKey"}},
+        "blockedUnsafeSignals": {"type": "array", "items": {"$ref": "#/$defs/signalKey"}}
+      }
+    },
+    "quality": {
+      "type": "object",
+      "required": ["durationSeconds", "totalSamples", "goodSamples", "invalidSamples", "timedOutRequests", "droppedSamples", "clockDiscontinuities", "averageLatencyMilliseconds", "observedFrequencyBySignal", "warnings"],
+      "properties": {
+        "durationSeconds": {"type": "number", "minimum": 0},
+        "totalSamples": {"type": "integer", "minimum": 0},
+        "goodSamples": {"type": "integer", "minimum": 0},
+        "invalidSamples": {"type": "integer", "minimum": 0},
+        "timedOutRequests": {"type": "integer", "minimum": 0},
+        "droppedSamples": {"type": "integer", "minimum": 0},
+        "clockDiscontinuities": {"type": "integer", "minimum": 0},
+        "averageLatencyMilliseconds": {"type": ["number", "null"], "minimum": 0},
+        "observedFrequencyBySignal": {"type": "object", "additionalProperties": {"type": "number", "minimum": 0}},
+        "warnings": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "question": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["symptom", "userDescription", "knownDTCs", "requestedSystems", "constraints"],
+      "properties": {
+        "symptom": {"type": "string"},
+        "userDescription": {"type": ["string", "null"]},
+        "knownDTCs": {"type": "array", "items": {"type": "string"}},
+        "requestedSystems": {"type": "array", "items": {"type": "string"}},
+        "constraints": {"type": "array", "items": {"type": "string"}}
+      }
+    }
+  }
+}
