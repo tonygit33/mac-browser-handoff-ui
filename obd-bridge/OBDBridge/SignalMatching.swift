@@ -28,3 +28,19 @@ extension DiagnosticCapabilityReportV1 {
         }
     }
 }
+
+extension SignalRegistryV1 {
+    /// Expands a PID/DID-level requirement into every concrete signal returned by that request.
+    func resolvedDefinitions(
+        for requirement: SignalIdentifierV1,
+        vehicle: VehicleProfileV1
+    ) -> [DiagnosticSignalDefinitionV1] {
+        let definitions = signalDefinitions(for: vehicle)
+        if let exact = definitions.first(where: { $0.key == requirement }) {
+            return [exact]
+        }
+        return definitions
+            .filter { $0.key.matchesRequirement(requirement) }
+            .sorted { $0.key.description < $1.key.description }
+    }
+}
