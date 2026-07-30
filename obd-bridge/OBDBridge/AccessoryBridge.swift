@@ -255,7 +255,7 @@ final class AccessoryBridge: NSObject, ObservableObject, StreamDelegate {
             q("STPBRR", 3, "Actual protocol baud rate")
         ]
 
-        for base in stride(from: 0, through: 0xC0, by: 0x20) {
+        for base in stride(from: 0, through: 0xE0, by: 0x20) {
             commands.append(q(String(format: "01%02X", base), 12, "Discover SAE PIDs"))
         }
         commands += [
@@ -272,7 +272,7 @@ final class AccessoryBridge: NSObject, ObservableObject, StreamDelegate {
             q("0906", 18, "Calibration verification numbers"),
             q("090A", 18, "ECU names")
         ]
-        for base in stride(from: 0, through: 0xC0, by: 0x20) {
+        for base in stride(from: 0, through: 0xE0, by: 0x20) {
             commands.append(q(String(format: "06%02X", base), 12, "Discover Mode 06 monitor IDs"))
         }
 
@@ -549,12 +549,13 @@ final class AccessoryBridge: NSObject, ObservableObject, StreamDelegate {
         case .deepDiscovery:
             workflow = .deepSnapshot
             var commands: [QueuedCommand] = []
-            let supportedDefinitions = supportedPIDs
-                .filter { PIDCatalog.definitions[$0] != nil }
+            // Query every PID advertised by any responding ECU. Unknown formulas remain raw.
+            let discovered = supportedPIDs
+                .filter { $0 % 0x20 != 0 }
                 .sorted()
-            let selectedPIDs = supportedDefinitions.isEmpty
+            let selectedPIDs = discovered.isEmpty
                 ? ScanPreset.p2188Idle.preferredPIDs
-                : supportedDefinitions
+                : discovered
 
             for pid in selectedPIDs {
                 commands.append(q(String(format: "01%02X", pid), 10, PIDCatalog.definitions[pid]?.name ?? "SAE PID"))
@@ -594,9 +595,13 @@ final class AccessoryBridge: NSObject, ObservableObject, StreamDelegate {
     private func enqueueContinuousCycle() {
         guard workflow == .continuous, let preset = continuousPreset else { return }
         continuousCycleCount += 1
-        let filtered = preset.preferredPIDs.filter {
-            PIDCatalog.definitions[$0] != nil && (supportedPIDs.isEmpty || supportedPIDs.contains($0))
+        let requested: [UInt8]
+        if preset == .allSupported, !supportedPIDs.isEmpty {
+            requested = supportedPIDs.filter { $0 % 0x20 != 0 }.sorted()
+        } else {
+            requested = preset.preferredPIDs
         }
+        let filtered = requested.filter { supportedPIDs.isEmpty || supportedPIDs.contains($0) }
         var commands = filtered.map {
             q(String(format: "01%02X", $0), 8, PIDCatalog.definitions[$0]?.name ?? "Live PID")
         }

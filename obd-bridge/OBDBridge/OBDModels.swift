@@ -141,20 +141,22 @@ enum OBDDecoder {
     }
 
     static func supportedIDs(responseService: UInt8, base: UInt8, response: String) -> Set<UInt8> {
-        guard let data = payloads(service: responseService, pid: base, response: response).first, data.count >= 4 else { return [] }
         var result = Set<UInt8>()
-        for (byteIndex, byte) in data.prefix(4).enumerated() {
-            for bit in 0..<8 where (byte & (1 << (7 - bit))) != 0 {
-                let value = Int(base) + byteIndex * 8 + bit + 1
-                if value <= 0xFF { result.insert(UInt8(value)) }
+        for data in payloads(service: responseService, pid: base, response: response) where data.count >= 4 {
+            for (byteIndex, byte) in data.prefix(4).enumerated() {
+                for bit in 0..<8 where (byte & (1 << (7 - bit))) != 0 {
+                    let value = Int(base) + byteIndex * 8 + bit + 1
+                    if value <= 0xFF { result.insert(UInt8(value)) }
+                }
             }
         }
         return result
     }
 
     static func decodeMode01(pid: UInt8, response: String) -> DecodedPID? {
-        guard let data = payloads(service: 0x41, pid: pid, response: response).first,
-              let definition = PIDCatalog.definitions[pid] else { return nil }
+        guard let data = payloads(service: 0x41, pid: pid, response: response).first else { return nil }
+        let definition = PIDCatalog.definitions[pid]
+            ?? PIDDefinition(pid: pid, name: String(format: "SAE PID 0x%02X", pid), unit: "raw")
         let a = data.count > 0 ? Double(data[0]) : 0
         let b = data.count > 1 ? Double(data[1]) : 0
         let word = a * 256 + b
