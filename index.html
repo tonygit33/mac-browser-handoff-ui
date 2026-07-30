@@ -7,7 +7,7 @@
 <meta name="robots" content="noindex,nofollow,noarchive">
 <title>Browser Control</title>
 <style>
-:root{color-scheme:dark}*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#07080a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif}body{display:flex;flex-direction:column;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}button,input{font:inherit}.top{position:absolute;z-index:5;left:10px;right:10px;top:calc(8px + env(safe-area-inset-top));display:flex;align-items:center;gap:8px;pointer-events:none}.pill{height:36px;border:0;border-radius:999px;background:#17191dcc;color:#fff;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding:0 14px;font-weight:700;box-shadow:0 4px 18px #0007;pointer-events:auto}.state{font-size:12px;font-weight:650;color:#d5d8df;max-width:52vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.grow{flex:1}.done{background:#d83c3e}.stage{position:relative;flex:1;overflow:hidden;touch-action:none;background:#050506}.surface{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform}.frame{display:block;width:100%;height:100%;user-select:none;-webkit-user-drag:none;background:#101114}.hint{position:absolute;z-index:4;left:50%;bottom:18px;transform:translateX(-50%);font-size:12px;color:#fff;background:#111a;padding:8px 12px;border-radius:999px;backdrop-filter:blur(10px);pointer-events:none;opacity:.9;transition:opacity .25s}.tools{position:absolute;z-index:6;right:12px;bottom:calc(14px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:10px}.tool{width:48px;height:48px;border:0;border-radius:50%;background:#17191de8;color:#fff;font-size:21px;box-shadow:0 4px 18px #0008}.keyboard{position:absolute;z-index:10;left:8px;right:8px;bottom:calc(8px + env(safe-area-inset-bottom));display:none;grid-template-columns:1fr auto;gap:8px;padding:9px;border-radius:16px;background:#17191df5;box-shadow:0 10px 35px #000b}.keyboard.open{display:grid}.keyboard input{height:46px;min-width:0;border:1px solid #3a3e46;border-radius:12px;background:#08090b;color:#fff;padding:0 13px}.keyboard button{height:46px;border:0;border-radius:12px;background:#1677ff;color:#fff;font-weight:750;padding:0 16px}.keyrow{grid-column:1/-1;display:flex;gap:7px;overflow-x:auto}.keyrow button{height:36px;background:#34373e;flex:0 0 auto;padding:0 13px}.closed{position:absolute;z-index:20;inset:0;display:none;align-items:center;justify-content:center;text-align:center;background:#090a0d;padding:30px}.closed.show{display:flex}.closed h1{font-size:27px;margin:0 0 10px}.closed p{color:#aeb3bd;line-height:1.5;margin:0}.flash{animation:flash .35s}@keyframes flash{50%{opacity:.45}}
+:root{color-scheme:dark}*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#07080a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif}body{display:flex;flex-direction:column;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}button,input{font:inherit}.top{position:absolute;z-index:5;left:10px;right:10px;top:calc(8px + env(safe-area-inset-top));display:flex;align-items:center;gap:8px;pointer-events:none}.pill{height:36px;border:0;border-radius:999px;background:#17191dcc;color:#fff;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding:0 14px;font-weight:700;box-shadow:0 4px 18px #0007;pointer-events:auto}.state{font-size:12px;font-weight:650;color:#d5d8df;max-width:52vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.grow{flex:1}.done{background:#d83c3e}.stage{position:relative;flex:1;overflow:hidden;touch-action:none;background:#050506}.surface{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform}.frame{display:block;width:100%;height:100%;user-select:none;-webkit-user-drag:none;background:#101114}.hint{position:absolute;z-index:4;left:50%;bottom:18px;transform:translateX(-50%);font-size:12px;color:#fff;background:#111a;padding:8px 12px;border-radius:999px;backdrop-filter:blur(10px);pointer-events:none;opacity:.9;transition:opacity .25s;white-space:nowrap}.tools{position:absolute;z-index:6;right:12px;bottom:calc(14px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:10px}.tool{width:48px;height:48px;border:0;border-radius:50%;background:#17191de8;color:#fff;font-size:20px;box-shadow:0 4px 18px #0008}.keyboard{position:absolute;z-index:10;left:8px;right:8px;bottom:calc(8px + env(safe-area-inset-bottom));display:none;grid-template-columns:1fr auto;gap:8px;padding:9px;border-radius:16px;background:#17191df5;box-shadow:0 10px 35px #000b}.keyboard.open{display:grid}.keyboard input{height:46px;min-width:0;border:1px solid #3a3e46;border-radius:12px;background:#08090b;color:#fff;padding:0 13px}.keyboard button{height:46px;border:0;border-radius:12px;background:#1677ff;color:#fff;font-weight:750;padding:0 16px}.keyrow{grid-column:1/-1;display:flex;gap:7px;overflow-x:auto}.keyrow button{height:36px;background:#34373e;flex:0 0 auto;padding:0 13px}.closed{position:absolute;z-index:20;inset:0;display:none;align-items:center;justify-content:center;text-align:center;background:#090a0d;padding:30px}.closed.show{display:flex}.closed h1{font-size:27px;margin:0 0 10px}.closed p{color:#aeb3bd;line-height:1.5;margin:0}.flash{animation:flash .35s}@keyframes flash{50%{opacity:.45}}
 </style>
 </head>
 <body>
@@ -22,6 +22,7 @@
   <div id="hint" class="hint">Касание — клик · свайп — прокрутка · удержать и тянуть — drag</div>
 </div>
 <div class="tools">
+  <button id="addressButton" class="tool" aria-label="Открыть адрес">↗</button>
   <button id="keyboardButton" class="tool" aria-label="Клавиатура">⌨︎</button>
   <button id="resetZoom" class="tool" aria-label="Сбросить масштаб">1×</button>
 </div>
@@ -37,6 +38,7 @@
 const RELAY='https://mac-browser-handoff-proxy.vercel.app/api/relay';
 const params=new URLSearchParams(location.hash.slice(1));
 const secret=params.get('secret')||'';
+const session=params.get('session')||'';
 const mode=params.get('mode')||'once';
 const frame=document.getElementById('frame'),surface=document.getElementById('surface'),stage=document.getElementById('stage');
 const stateEl=document.getElementById('state'),hint=document.getElementById('hint'),keyboard=document.getElementById('keyboard'),text=document.getElementById('text');
@@ -44,13 +46,14 @@ let naturalW=1365,naturalH=604,fitScale=1,zoom=1,tx=0,ty=0,refreshTimer=null,clo
 let commandBusy=false,pending=null,lastFrameAt=0;
 const pointers=new Map();let gesture=null,single=null;
 
-if(!secret){stateEl.textContent='Ссылка недействительна';document.getElementById('closed').classList.add('show');throw new Error('Missing secret')}
+if(!secret||!session){stateEl.textContent='Ссылка недействительна';document.getElementById('closed').classList.add('show');throw new Error('Missing access data')}
 document.getElementById('done').textContent=mode==='hold'?'Закрыть':'Готово';
 
 function relayUrl(op){const u=new URL(RELAY);u.searchParams.set('op',op);u.searchParams.set('secret',secret);u.searchParams.set('_',Date.now());return u.toString()}
 function sendNow(payload){
+  const body={...payload,sessionId:session};
   commandBusy=true;stateEl.textContent='Отправка…';
-  fetch(relayUrl('command'),{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify(payload),cache:'no-store',keepalive:true}).catch(()=>{}).finally(()=>{setTimeout(()=>{commandBusy=false;if(pending){const next=pending;pending=null;sendNow(next)}},500)});
+  fetch(relayUrl('command'),{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify(body),cache:'no-store',keepalive:true}).catch(()=>{}).finally(()=>{setTimeout(()=>{commandBusy=false;if(pending){const next=pending;pending=null;sendNow(next)}},500)});
   setTimeout(refreshFrame,650);
 }
 function command(payload){if(closed)return;if(commandBusy){pending=payload;return}sendNow(payload)}
@@ -59,10 +62,11 @@ function resetView(){const sw=stage.clientWidth,sh=stage.clientHeight;fitScale=M
 function setZoom(next,cx=stage.clientWidth/2,cy=stage.clientHeight/2){const old=fitScale*zoom;zoom=Math.max(1,Math.min(7,next));const now=fitScale*zoom;tx=cx-(cx-tx)*(now/old);ty=cy-(cy-ty)*(now/old);if(zoom===1)resetView();else apply()}
 function normalized(clientX,clientY){const r=surface.getBoundingClientRect();return{x:Math.max(0,Math.min(1,(clientX-r.left)/r.width)),y:Math.max(0,Math.min(1,(clientY-r.top)/r.height)),inside:clientX>=r.left&&clientX<=r.right&&clientY>=r.top&&clientY<=r.bottom}}
 function refreshFrame(){if(closed)return;const next=relayUrl('frame');frame.onload=()=>{naturalW=frame.naturalWidth||naturalW;naturalH=frame.naturalHeight||naturalH;if(!lastFrameAt)resetView();lastFrameAt=Date.now();stateEl.textContent='LIVE';frame.classList.remove('flash')};frame.onerror=()=>{stateEl.textContent='Ожидание Mac…'};frame.classList.add('flash');frame.src=next}
-function schedule(){clearInterval(refreshTimer);refreshTimer=setInterval(()=>{if(document.visibilityState==='visible')refreshFrame()},950)}
+function schedule(){clearInterval(refreshTimer);refreshTimer=setInterval(()=>{if(document.visibilityState==='visible')refreshFrame()},850)}
 function closeKeyboard(){keyboard.classList.remove('open');text.blur()}
 function openKeyboard(){keyboard.classList.add('open');setTimeout(()=>text.focus(),50)}
 function finish(){if(closed)return;sendNow({op:'done'});closed=true;clearInterval(refreshTimer);document.getElementById('closed').classList.add('show')}
+function openAddress(){let value=prompt('Открыть адрес','https://');if(!value)return;value=value.trim();if(!/^[a-z][a-z0-9+.-]*:/i.test(value))value='https://'+value;command({op:'navigate',url:value})}
 
 stage.addEventListener('pointerdown',e=>{
   stage.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY,t:Date.now()});
@@ -92,6 +96,7 @@ stage.addEventListener('pointercancel',e=>{pointers.delete(e.pointerId);gesture=
 
 document.getElementById('back').onclick=()=>command({op:'back'});
 document.getElementById('done').onclick=finish;
+document.getElementById('addressButton').onclick=openAddress;
 document.getElementById('keyboardButton').onclick=()=>keyboard.classList.contains('open')?closeKeyboard():openKeyboard();
 document.getElementById('resetZoom').onclick=resetView;
 document.getElementById('send').onclick=()=>{if(text.value){command({op:'type',text:text.value});text.value=''}closeKeyboard()};
