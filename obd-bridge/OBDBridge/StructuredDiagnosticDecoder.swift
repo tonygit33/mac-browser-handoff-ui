@@ -7,7 +7,7 @@ enum StructuredDiagnosticDecoder {
         let compact = command.uppercased().filter(\.isHexDigit)
         guard compact.hasPrefix("02"), compact.count >= 6,
               let pid = UInt8(compact.dropFirst(2).prefix(2), radix: 16),
-              let requestedFrame = UInt8(compact.dropFirst(4).prefix(2), radix: 16) else {
+              UInt8(compact.dropFirst(4).prefix(2), radix: 16) != nil else {
             return nil
         }
 
