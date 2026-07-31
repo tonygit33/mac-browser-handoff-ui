@@ -33,28 +33,28 @@ final class OBDCoreTests: XCTestCase {
 
     func testRPMDecode() throws {
         let decoded = try XCTUnwrap(OBDDecoder.decodeMode01(pid: 0x0C, response: "7E8 04 41 0C 1A F8\r>"))
-        XCTAssertEqual(decoded.numericValue, 1726, accuracy: 0.001)
+        XCTAssertEqual(try XCTUnwrap(decoded.numericValue), 1726, accuracy: 0.001)
         XCTAssertEqual(decoded.unit, "rpm")
     }
 
     func testCompactPayloadDecodeWithoutSpaces() throws {
         let decoded = try XCTUnwrap(OBDDecoder.decodeMode01(pid: 0x0C, response: "410C1AF8\r>"))
-        XCTAssertEqual(decoded.numericValue, 1726, accuracy: 0.001)
+        XCTAssertEqual(try XCTUnwrap(decoded.numericValue), 1726, accuracy: 0.001)
     }
 
     func testCompact11BitHeaderDecode() throws {
         let decoded = try XCTUnwrap(OBDDecoder.decodeMode01(pid: 0x0C, response: "7E804410C1AF8\r>"))
-        XCTAssertEqual(decoded.numericValue, 1726, accuracy: 0.001)
+        XCTAssertEqual(try XCTUnwrap(decoded.numericValue), 1726, accuracy: 0.001)
     }
 
     func test29BitHeaderDecode() throws {
         let decoded = try XCTUnwrap(OBDDecoder.decodeMode01(pid: 0x0C, response: "18DAF110 04 41 0C 1A F8\r>"))
-        XCTAssertEqual(decoded.numericValue, 1726, accuracy: 0.001)
+        XCTAssertEqual(try XCTUnwrap(decoded.numericValue), 1726, accuracy: 0.001)
     }
 
     func testFuelTrimDecode() throws {
         let decoded = try XCTUnwrap(OBDDecoder.decodeMode01(pid: 0x06, response: "41 06 70\r>"))
-        XCTAssertEqual(decoded.numericValue, -12.5, accuracy: 0.001)
+        XCTAssertEqual(try XCTUnwrap(decoded.numericValue), -12.5, accuracy: 0.001)
         XCTAssertEqual(decoded.unit, "%")
     }
 
@@ -78,7 +78,7 @@ final class OBDCoreTests: XCTestCase {
         )
         XCTAssertEqual(record.frameNumber, 0)
         let sample = try XCTUnwrap(record.samples.first)
-        XCTAssertEqual(sample.numericValue, 1726, accuracy: 0.001)
+        XCTAssertEqual(try XCTUnwrap(sample.numericValue), 1726, accuracy: 0.001)
         XCTAssertEqual(sample.unit, "rpm")
         XCTAssertEqual(sample.rawHex, "1AF8")
     }
