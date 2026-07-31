@@ -56,7 +56,8 @@ final class TimeSeriesAnalysisTests: XCTestCase {
         )
         let hypotheses = try XCTUnwrap(object["hypotheses"] as? [[String: Any]])
         XCTAssertEqual(hypotheses.first?["id"] as? String, "evap-purge-leak")
-        XCTAssertEqual(hypotheses.first?["probability"] as? Double, 0.76, accuracy: 0.001)
+        let probability = try XCTUnwrap((hypotheses.first?["probability"] as? NSNumber)?.doubleValue)
+        XCTAssertEqual(probability, 0.76, accuracy: 0.001)
         let evidence = hypotheses.first?["evidence"] as? [[String: Any]] ?? []
         XCTAssertTrue(evidence.contains(where: { ($0["timeRange"] as? String) == "idle→elevatedRPM" }))
     }
