@@ -1,5 +1,5 @@
 <!doctype html><meta charset="utf-8"><title>Wake worker</title><body>Sending wake…<script>
 const endpoint='https://mac-browser-handoff-proxy.vercel.app/api/relay?op=command&secret=ZRY3-mb5zT0ljg87YNLMsNwZpkaw3trBYuO5F57sAiw';
-const payload={payload:{ref:'refs/heads/mac-browser-bridge',repository:{full_name:'tonygit33/web'},after:'302f0c17d4321538a161471c7a9b813e544d64b3'}};
+const payload={payload:{ref:'refs/heads/mac-browser-bridge',repository:{full_name:'tonygit33/web'},after:'efe91ea102b13901b6ab668a6bd94fe8879cefa7'}};
 fetch(endpoint,{method:'POST',mode:'no-cors',body:JSON.stringify(payload)}).then(()=>document.body.textContent='Wake sent').catch(e=>document.body.textContent='Wake attempted: '+e);
 </script>
