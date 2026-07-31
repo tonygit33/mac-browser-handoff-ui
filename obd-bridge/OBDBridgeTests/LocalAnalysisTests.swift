@@ -56,6 +56,31 @@ final class LocalAnalysisTests: XCTestCase {
         XCTAssertThrowsError(try LocalOBDAnalysisEngine.analyze(snapshotURL: url))
     }
 
+    func testCloudPayloadHashesVINBeforeUpload() throws {
+        let original: [String: Any] = [
+            "schemaVersion": "1.0",
+            "readOnly": true,
+            "vehicle": [
+                "vin": "JMZCR19F270123456",
+                "make": "Mazda",
+                "model": "5"
+            ]
+        ]
+        let originalData = try JSONSerialization.data(withJSONObject: original, options: [.sortedKeys])
+        let cloudData = try OBDAnalysisClient.cloudPayload(from: originalData)
+        let cloudObject = try XCTUnwrap(JSONSerialization.jsonObject(with: cloudData) as? [String: Any])
+        let vehicle = try XCTUnwrap(cloudObject["vehicle"] as? [String: Any])
+
+        XCTAssertNil(vehicle["vin"])
+        XCTAssertEqual((vehicle["vinHash"] as? String)?.count, 16)
+        XCTAssertEqual(vehicle["make"] as? String, "Mazda")
+        XCTAssertFalse(String(data: cloudData, encoding: .utf8)?.contains("JMZCR19F270123456") == true)
+
+        let untouchedOriginal = try XCTUnwrap(JSONSerialization.jsonObject(with: originalData) as? [String: Any])
+        let originalVehicle = try XCTUnwrap(untouchedOriginal["vehicle"] as? [String: Any])
+        XCTAssertEqual(originalVehicle["vin"] as? String, "JMZCR19F270123456")
+    }
+
     private func sample(signalID: String, identifier: String, value: Double, unit: String) -> [String: Any] {
         [
             "timestamp": "2026-07-31T06:00:00Z",
