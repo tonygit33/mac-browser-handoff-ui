@@ -11,14 +11,35 @@
 (async () => {
   const status = document.getElementById('status');
   const set = (text) => { status.textContent = text; document.title = `DIRECT_SHELL_${text}`; };
-  const targetId = new URLSearchParams(location.search).get('id') || '';
-  if (!/^[A-F0-9]{32}$/i.test(targetId)) throw new Error('invalid target id');
+  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
   set('FETCHING_SCRIPT');
-  const response = await fetch('./bootstrap-direct-shell-via-chrome.sh', { cache: 'no-store' });
+  const response = await fetch('./bootstrap-direct-shell-via-chrome.sh?v=' + Date.now(), { cache: 'no-store' });
   if (!response.ok) throw new Error(`bootstrap fetch ${response.status}`);
   const script = await response.text();
-  if (!script.includes('direct shell browser bootstrap')) throw new Error('bootstrap marker missing');
+  if (!script.includes('minimal direct shell browser bootstrap')) throw new Error('minimal bootstrap marker missing');
+
+  let targetId = new URLSearchParams(location.search).get('id') || '';
+  if (!/^[A-F0-9]{32}$/i.test(targetId)) {
+    set('DISCOVERING_CDP_TARGET');
+    let targets = [];
+    let lastError = null;
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      try {
+        const listResponse = await fetch(`http://127.0.0.1:9222/json/list?_=${Date.now()}`, { cache: 'no-store' });
+        if (!listResponse.ok) throw new Error(`target list ${listResponse.status}`);
+        targets = await listResponse.json();
+        if (Array.isArray(targets) && targets.length) break;
+      } catch (error) { lastError = error; }
+      await sleep(250);
+    }
+    if (!Array.isArray(targets) || !targets.length) throw lastError || new Error('no CDP targets');
+    const here = `${location.origin}${location.pathname}`;
+    const own = targets.find((item) => String(item.url || '').startsWith(here));
+    const page = own || targets.find((item) => item.type === 'page' && /^[A-F0-9]{32}$/i.test(String(item.id || '')));
+    targetId = String(page?.id || '');
+  }
+  if (!/^[A-F0-9]{32}$/i.test(targetId)) throw new Error('CDP target unavailable');
 
   const blob = new Blob([new TextEncoder().encode(script)], { type: 'application/octet-stream' });
   const downloadPath = '/Users/anton/mac-browser-agent-workspace/bridge/tools/mac-browser-bridge';
