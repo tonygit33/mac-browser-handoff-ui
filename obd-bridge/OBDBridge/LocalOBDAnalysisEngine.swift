@@ -19,6 +19,8 @@ enum LocalOBDAnalysisEngine {
         }
 
         let samples = snapshot["latestSamples"] as? [[String: Any]] ?? []
+        let timeSeries = snapshot["timeSeriesSummary"] as? [String: Any]
+        let seriesSignals = timeSeries?["signals"] as? [[String: Any]] ?? []
         var codes = Set<String>()
         if let question = snapshot["analysisQuestion"] as? [String: Any],
            let known = question["knownDTCs"] as? [String] {
@@ -47,10 +49,42 @@ enum LocalOBDAnalysisEngine {
             return nil
         }
 
-        func evidence(_ signal: String?, _ observation: String, _ strength: Double, supports: Bool = true) -> [String: Any] {
+        func seriesMean(_ needles: [String], regime: String) -> Double? {
+            for signal in seriesSignals {
+                let name = signalName(signal)
+                guard needles.contains(where: { name.contains($0.lowercased()) }) else { continue }
+                let rows = signal["byRegime"] as? [[String: Any]] ?? []
+                guard let row = rows.first(where: { ($0["regime"] as? String) == regime }),
+                      let statistics = row["statistics"] as? [String: Any],
+                      let mean = statistics["mean"] as? NSNumber else { continue }
+                return mean.doubleValue
+            }
+            return nil
+        }
+
+        func seriesCount(_ needles: [String], regime: String) -> Int {
+            for signal in seriesSignals {
+                let name = signalName(signal)
+                guard needles.contains(where: { name.contains($0.lowercased()) }) else { continue }
+                let rows = signal["byRegime"] as? [[String: Any]] ?? []
+                guard let row = rows.first(where: { ($0["regime"] as? String) == regime }),
+                      let statistics = row["statistics"] as? [String: Any],
+                      let count = statistics["count"] as? NSNumber else { continue }
+                return count.intValue
+            }
+            return 0
+        }
+
+        func evidence(
+            _ signal: String?,
+            _ observation: String,
+            _ strength: Double,
+            supports: Bool = true,
+            timeRange: String? = nil
+        ) -> [String: Any] {
             [
                 "signal": signal as Any,
-                "timeRange": NSNull(),
+                "timeRange": timeRange as Any,
                 "observation": observation,
                 "supportsHypothesis": supports,
                 "strength": max(0, min(1, strength))
@@ -65,6 +99,7 @@ enum LocalOBDAnalysisEngine {
             confidence: Double,
             explanation: String,
             evidence: [[String: Any]],
+            contraryEvidence: [[String: Any]] = [],
             tests: [String],
             repairAdvice: [String] = [],
             warnings: [String] = []
@@ -77,49 +112,93 @@ enum LocalOBDAnalysisEngine {
                 "confidence": max(0, min(1, confidence)),
                 "explanation": explanation,
                 "evidence": evidence,
-                "contraryEvidence": [],
+                "contraryEvidence": contraryEvidence,
                 "nextReadOnlyTests": tests,
                 "repairAdvice": repairAdvice,
                 "safetyWarnings": warnings
             ]
         }
 
-        let stft = numeric(["shrtft1", "short_fuel_trim_bank_1", ":06:"])
-        let ltft = numeric(["longft1", "long_fuel_trim_bank_1", ":07:"])
+        let stftNeedles = ["shrtft1", "short_fuel_trim_bank_1", ":06:"]
+        let ltftNeedles = ["longft1", "long_fuel_trim_bank_1", ":07:"]
+        let stft = numeric(stftNeedles)
+        let ltft = numeric(ltftNeedles)
         let rpm = numeric(["rpm", ":0c:"])
         let purge = numeric(["evap_purge", "purge", ":2e:"])
         let maf = numeric(["maf", "mass_air_flow", ":10:"])
         let map = numeric(["map", "manifold_absolute_pressure", ":0b:"])
         let coolant = numeric(["coolant", "ect", ":05:"])
         let voltage = numeric(["control_module_voltage", ":42:"])
-        let totalTrim = (stft != nil || ltft != nil) ? (stft ?? 0) + (ltft ?? 0) : nil
+        let latestTotalTrim = (stft != nil || ltft != nil) ? (stft ?? 0) + (ltft ?? 0) : nil
+
+        let idleSTFT = seriesMean(stftNeedles, regime: "idle")
+        let idleLTFT = seriesMean(ltftNeedles, regime: "idle")
+        let elevatedSTFT = seriesMean(stftNeedles, regime: "elevatedRPM")
+        let elevatedLTFT = seriesMean(ltftNeedles, regime: "elevatedRPM")
+        let idleTotalTrim = (idleSTFT != nil || idleLTFT != nil) ? (idleSTFT ?? 0) + (idleLTFT ?? 0) : nil
+        let elevatedTotalTrim = (elevatedSTFT != nil || elevatedLTFT != nil) ? (elevatedSTFT ?? 0) + (elevatedLTFT ?? 0) : nil
+        let diagnosticTrim = idleTotalTrim ?? latestTotalTrim
+        let idleSpecificRelief = idleTotalTrim != nil && elevatedTotalTrim != nil
+            && elevatedTotalTrim! - idleTotalTrim! >= 8
+        let persistentRich = idleTotalTrim.map { $0 < -15 } == true
+            && elevatedTotalTrim.map { $0 < -12 } == true
 
         let quality = snapshot["quality"] as? [String: Any]
         let totalSamples = (quality?["totalSamples"] as? NSNumber)?.doubleValue ?? 0
         let goodSamples = (quality?["goodSamples"] as? NSNumber)?.doubleValue ?? 0
         let goodRatio = totalSamples > 0 ? goodSamples / totalSamples : 0.5
-        let baseConfidence = max(0.35, min(0.92, 0.4 + goodRatio * 0.42 + (codes.isEmpty ? 0 : 0.08)))
-        let richIdle = codes.contains("P2188") || (totalTrim.map { $0 < -15 } == true && (rpm == nil || rpm! < 1_200))
-        let lean = codes.contains("P0171") || codes.contains("P2187") || totalTrim.map { $0 > 15 } == true
+        let seriesBonus = seriesSignals.isEmpty ? 0 : 0.08
+        let baseConfidence = max(0.35, min(0.94, 0.36 + goodRatio * 0.42 + (codes.isEmpty ? 0 : 0.08) + seriesBonus))
+        let richIdle = codes.contains("P2188")
+            || idleTotalTrim.map { $0 < -15 } == true
+            || (latestTotalTrim.map { $0 < -15 } == true && (rpm == nil || rpm! < 1_200))
+        let lean = codes.contains("P0171") || codes.contains("P2187") || diagnosticTrim.map { $0 > 15 } == true
         let misfireCodes = codes.filter { $0.range(of: #"^P030[0-9A-F]$"#, options: .regularExpression) != nil }.sorted()
         var hypotheses: [[String: Any]] = []
-        let trimEvidence = totalTrim.map {
-            [evidence("fuel-trim-bank-1", String(format: "Combined STFT+LTFT is %.1f%%.", $0), 0.92)]
-        } ?? []
+
+        var trimEvidence: [[String: Any]] = []
+        if let idleTotalTrim {
+            trimEvidence.append(evidence(
+                "fuel-trim-bank-1",
+                String(format: "Mean combined STFT+LTFT at idle is %.1f%% (%d STFT samples, %d LTFT samples).", idleTotalTrim, seriesCount(stftNeedles, regime: "idle"), seriesCount(ltftNeedles, regime: "idle")),
+                0.96,
+                timeRange: "idle"
+            ))
+        } else if let latestTotalTrim {
+            trimEvidence.append(evidence("fuel-trim-bank-1", String(format: "Latest combined STFT+LTFT is %.1f%%.", latestTotalTrim), 0.72))
+        }
+        if let elevatedTotalTrim {
+            trimEvidence.append(evidence(
+                "fuel-trim-bank-1",
+                String(format: "Mean combined STFT+LTFT at elevated stationary RPM is %.1f%%.", elevatedTotalTrim),
+                0.9,
+                timeRange: "elevatedRPM"
+            ))
+        }
 
         if richIdle {
             var purgeEvidence = trimEvidence
-            if let purge {
-                purgeEvidence.append(evidence("commanded-evap-purge", String(format: "Purge command is %.1f%%.", purge), purge > 2 ? 0.78 : 0.35))
+            if idleSpecificRelief, let idleTotalTrim, let elevatedTotalTrim {
+                purgeEvidence.append(evidence(
+                    "fuel-trim-differential",
+                    String(format: "Fuel correction improves by %.1f percentage points from idle to elevated RPM, supporting an idle-flow mechanism.", elevatedTotalTrim - idleTotalTrim),
+                    0.94,
+                    timeRange: "idle→elevatedRPM"
+                ))
             }
+            if let purge {
+                purgeEvidence.append(evidence("commanded-evap-purge", String(format: "Latest purge command is %.1f%%.", purge), purge > 2 ? 0.62 : 0.25))
+            }
+            let purgeProbability = idleSpecificRelief ? 0.76 : (persistentRich ? 0.43 : (purge.map { $0 > 2 ? 0.66 : 0.57 } ?? 0.57))
             hypotheses.append(hypothesis(
                 id: "evap-purge-leak",
                 title: "EVAP purge valve leaking or flowing at idle",
                 system: "EVAP / fuel control",
-                probability: purge.map { $0 > 2 ? 0.73 : 0.59 } ?? 0.59,
+                probability: purgeProbability,
                 confidence: baseConfidence,
-                explanation: "Fuel vapour entering the intake at idle can create a rich-at-idle pattern that weakens as airflow rises.",
+                explanation: "Fuel vapour entering the intake at idle can create a rich-at-idle pattern that weakens as airflow rises. Commanded purge alone does not prove valve leakage.",
                 evidence: purgeEvidence,
+                contraryEvidence: persistentRich ? [evidence("fuel-trim-differential", "Rich correction persists at elevated RPM, which is less specific for an idle purge leak.", 0.7, supports: false, timeRange: "elevatedRPM")] : [],
                 tests: [
                     "Repeat warm idle with purge command, STFT, LTFT, MAP and RPM.",
                     "Compare the same signals at steady 2500 RPM.",
@@ -131,10 +210,11 @@ enum LocalOBDAnalysisEngine {
                 id: "fuel-pressure-or-injector",
                 title: "Excess fuel pressure or a leaking injector",
                 system: "Fuel delivery",
-                probability: 0.52,
+                probability: persistentRich ? 0.69 : (idleSpecificRelief ? 0.41 : 0.52),
                 confidence: baseConfidence * 0.92,
-                explanation: "Mechanical over-fuelling can force negative trims, especially after hot soak and at idle.",
+                explanation: "Mechanical over-fuelling can force negative trims, especially after hot soak. Persistence across RPM/load strengthens this mechanism.",
                 evidence: trimEvidence,
+                contraryEvidence: idleSpecificRelief ? [evidence("fuel-trim-differential", "Correction improves materially above idle, which is less typical of a pressure fault that persists across load.", 0.7, supports: false, timeRange: "idle→elevatedRPM")] : [],
                 tests: [
                     "Capture rail pressure if available.",
                     "Compare cold start, hot restart and warm idle.",
@@ -143,15 +223,15 @@ enum LocalOBDAnalysisEngine {
                 repairAdvice: ["Do not replace injectors from trim data alone."]
             ))
             var meteringEvidence = trimEvidence
-            if let maf { meteringEvidence.append(evidence("maf", String(format: "MAF is %.2f g/s.", maf), 0.36)) }
-            if let map { meteringEvidence.append(evidence("map", String(format: "MAP is %.1f kPa.", map), 0.36)) }
-            if let coolant { meteringEvidence.append(evidence("coolant", String(format: "Coolant is %.1f °C.", coolant), 0.3)) }
+            if let maf { meteringEvidence.append(evidence("maf", String(format: "Latest MAF is %.2f g/s.", maf), 0.3)) }
+            if let map { meteringEvidence.append(evidence("map", String(format: "Latest MAP is %.1f kPa.", map), 0.3)) }
+            if let coolant { meteringEvidence.append(evidence("coolant", String(format: "Latest coolant temperature is %.1f °C.", coolant), 0.3)) }
             hypotheses.append(hypothesis(
                 id: "biased-air-metering",
                 title: "MAF, MAP or temperature input biased toward excess fuel",
                 system: "Air metering / sensors",
                 probability: 0.43,
-                confidence: baseConfidence * 0.88,
+                confidence: baseConfidence * 0.86,
                 explanation: "A plausible but biased airflow, pressure or temperature signal can make commanded fuel too high.",
                 evidence: meteringEvidence,
                 tests: [
@@ -205,7 +285,7 @@ enum LocalOBDAnalysisEngine {
                 probability: 0.76,
                 confidence: baseConfidence,
                 explanation: "Supply voltage outside a normal running range can distort sensor readings and create secondary faults.",
-                evidence: [evidence("control-module-voltage", String(format: "Reported voltage is %.2f V.", voltage), 0.96)],
+                evidence: [evidence("control-module-voltage", String(format: "Latest reported voltage is %.2f V.", voltage), 0.96)],
                 tests: [
                     "Confirm battery voltage and ECU grounds with a calibrated meter.",
                     "Repeat capture after correcting voltage or grounding faults."
@@ -221,7 +301,7 @@ enum LocalOBDAnalysisEngine {
                 system: "General diagnostics",
                 probability: 0.35,
                 confidence: baseConfidence * 0.75,
-                explanation: "The snapshot is valid, but a time-series scenario or stronger DTC evidence is needed for a reliable ranking.",
+                explanation: "The snapshot is valid, but a complete operating-regime series or stronger DTC evidence is needed for a reliable ranking.",
                 evidence: [],
                 tests: [
                     "Run cold start, warm idle, steady 2500 RPM and road-load captures.",
@@ -236,6 +316,7 @@ enum LocalOBDAnalysisEngine {
         }
         let summary = hypotheses.first?["title"] as? String ?? "Local diagnostic analysis completed"
         var limitations: [String] = ["Cloud analysis was unavailable; the on-device evidence engine was used."]
+        if seriesSignals.isEmpty { limitations.append("No bounded time-series regime summary was supplied; latest values were used.") }
         if (snapshot["freezeFrames"] as? [Any])?.isEmpty != false { limitations.append("No structured freeze-frame records were supplied.") }
         if (snapshot["mode06Results"] as? [Any])?.isEmpty != false { limitations.append("No structured Mode 06 records were supplied.") }
         if samples.isEmpty { limitations.append("No decoded latest samples were supplied.") }
@@ -251,11 +332,11 @@ enum LocalOBDAnalysisEngine {
             "dataLimitations": limitations,
             "missingSignalsThatWouldHelp": [],
             "recommendedNextScenarioIDs": richIdle
-                ? ["generic.warm-idle-2500", "hot-restart"]
+                ? ["mazda5.cr.p2188", "generic.warm-idle-2500", "generic.cold-start"]
                 : ["generic.cold-start", "generic.warm-idle-2500", "generic.road-load"],
             "urgentSafetyAdvice": urgent,
-            "modelIdentifier": "obd-on-device-rules-1.0",
-            "engine": "local-rules",
+            "modelIdentifier": "obd-on-device-rules-1.1",
+            "engine": "rules-on-device",
             "requestDigest": digest
         ]
         let output = try JSONSerialization.data(withJSONObject: result, options: [.prettyPrinted, .sortedKeys])
