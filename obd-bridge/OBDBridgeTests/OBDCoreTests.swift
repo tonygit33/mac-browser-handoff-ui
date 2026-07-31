@@ -16,6 +16,21 @@ final class OBDCoreTests: XCTestCase {
         }
     }
 
+    func testSessionFileNamesCannotCreateNestedPaths() {
+        let component = SessionFileNaming.safeComponent("P2188 / fuel trims: gasoline → LPG")
+        XCTAssertFalse(component.contains("/"))
+        XCTAssertFalse(component.contains(":"))
+        XCTAssertFalse(component.contains(" "))
+        XCTAssertTrue(component.contains("P2188"))
+
+        let date = Date(timeIntervalSince1970: 1_700_000_000)
+        let first = SessionFileNaming.directoryName(date: date, label: "P2188 / fuel trims", identifier: "ABC12345")
+        let second = SessionFileNaming.directoryName(date: date, label: "P2188 / fuel trims", identifier: "XYZ67890")
+        XCTAssertNotEqual(first, second)
+        XCTAssertFalse(first.contains("/"))
+        XCTAssertTrue(first.hasSuffix("P2188-fuel-trims-ABC12345"))
+    }
+
     func testRPMDecode() throws {
         let decoded = try XCTUnwrap(OBDDecoder.decodeMode01(pid: 0x0C, response: "7E8 04 41 0C 1A F8\r>"))
         XCTAssertEqual(decoded.numericValue, 1726, accuracy: 0.001)
