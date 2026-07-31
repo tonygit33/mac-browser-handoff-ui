@@ -324,11 +324,13 @@ final class ProfessionalDiagnosticsRuntime: ObservableObject {
                     title: scenarioLabel,
                     startedAt: sessionStartedAt ?? end,
                     endedAt: end,
-                    completedPhaseIDs: timeSeriesSummary.map(Self.completedRegimeIDs) ?? [],
+                    completedPhaseIDs: [],
                     userMarkers: userMarkers + [Self.timestampedMarker(summaryLabel)],
                     entryConditionsMet: [],
                     entryConditionsMissing: [],
-                    notes: []
+                    notes: timeSeriesSummary.map {
+                        ["Observed operating regimes: \(Self.observedRegimeIDs($0).joined(separator: ", "))"]
+                    } ?? ["Operating regimes could not be summarized."]
                 )
             ],
             datasets: datasets,
@@ -393,7 +395,7 @@ final class ProfessionalDiagnosticsRuntime: ObservableObject {
         "\(ISO8601DateFormatter().string(from: Date())) | \(marker)"
     }
 
-    private static func completedRegimeIDs(_ summary: TimeSeriesAnalysisSummaryV1) -> [String] {
+    private static func observedRegimeIDs(_ summary: TimeSeriesAnalysisSummaryV1) -> [String] {
         Array(Set(summary.signals.flatMap { $0.byRegime.map { $0.regime.rawValue } })).sorted()
     }
 
