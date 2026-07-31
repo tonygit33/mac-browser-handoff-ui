@@ -42,6 +42,7 @@ final class AccessoryBridge: NSObject, ObservableObject, StreamDelegate {
     @Published private(set) var supportedPIDCount = 0
     @Published private(set) var activeScenario = ""
     @Published private(set) var isLogging = false
+    @Published private(set) var isConnecting = false
 
     let recorder = DiagnosticSessionRecorder()
     let professional = ProfessionalDiagnosticsRuntime()
@@ -80,9 +81,21 @@ final class AccessoryBridge: NSObject, ObservableObject, StreamDelegate {
     private var continuousCycleCount = 0
     private var currentFuelMode: FuelMode = .unknown
     private var adapterDetails: [String:String] = [:]
+    private var inputReady = false
+    private var outputReady = false
+    private var connectionTimeoutWorkItem: DispatchWorkItem?
+    private var promptRecoveryWorkItem: DispatchWorkItem?
+    private var discardingUntilPrompt = false
+    private var continuousNextDue: [String: Date] = [:]
+    private var lastContinuousHealthAt: Date?
+    private let demoMode = ProcessInfo.processInfo.arguments.contains("--ui-testing-demo")
 
     override init() {
         super.init()
+        if demoMode {
+            configureDemoState()
+            return
+        }
         let manager = EAAccessoryManager.shared()
         manager.registerForLocalNotifications()
         NotificationCenter.default.addObserver(
@@ -102,7 +115,9 @@ final class AccessoryBridge: NSObject, ObservableObject, StreamDelegate {
 
     deinit {
         NotificationCenter.default.removeObserver(self)
-        EAAccessoryManager.shared().unregisterForLocalNotifications()
+        if !demoMode {
+            EAAccessoryManager.shared().unregisterForLocalNotifications()
+        }
         close()
     }
 
@@ -116,6 +131,7 @@ final class AccessoryBridge: NSObject, ObservableObject, StreamDelegate {
     }
 
     func refreshAccessories() {
+        if demoMode { return }
         let found = EAAccessoryManager.shared().connectedAccessories
         accessories = found.map {
             AccessorySummary(
@@ -139,6 +155,7 @@ final class AccessoryBridge: NSObject, ObservableObject, StreamDelegate {
     }
 
     func connect() {
+        guard !isConnecting else { return }
         close(preserveStatus: true)
         refreshAccessories()
 
@@ -160,6 +177,9 @@ final class AccessoryBridge: NSObject, ObservableObject, StreamDelegate {
         session = newSession
         inputStream = newSession.inputStream
         outputStream = newSession.outputStream
+        inputReady = false
+        outputReady = false
+        isConnecting = true
 
         inputStream?.delegate = self
         outputStream?.delegate = self
@@ -172,12 +192,21 @@ final class AccessoryBridge: NSObject, ObservableObject, StreamDelegate {
         status = "Opening OBDLink session…"
         appendLog("Opening \(selected.name) [\(selected.modelNumber)]")
         appendLog("Protocols: \(selected.protocolStrings.joined(separator: ", "))")
+
+        let work = DispatchWorkItem { [weak self] in
+            guard let self, self.isConnecting, !self.isConnected else { return }
+            self.failConnection("Connection timed out")
+        }
+        connectionTimeoutWorkItem = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 12, execute: work)
     }
 
     func close(preserveStatus: Bool = false) {
         stopWorkflow(save: true)
         timeoutWorkItem?.cancel()
         nextCycleWorkItem?.cancel()
+        connectionTimeoutWorkItem?.cancel()
+        promptRecoveryWorkItem?.cancel()
         inputStream?.close()
         outputStream?.close()
         inputStream?.remove(from: .main, forMode: .common)
@@ -194,7 +223,10 @@ final class AccessoryBridge: NSObject, ObservableObject, StreamDelegate {
         activeBuffer = ""
         connectedName = nil
         isConnected = false
-        isBusy = false
+        isConnecting = false
+        inputReady = false
+        outputReady = false
+        discardingUntilPrompt = false
         if !preserveStatus { status = "Disconnected" }
     }
 
@@ -305,6 +337,8 @@ final class AccessoryBridge: NSObject, ObservableObject, StreamDelegate {
         currentFuelMode = fuelMode
         continuousPreset = preset
         continuousCycleCount = 0
+        continuousNextDue.removeAll()
+        lastContinuousHealthAt = nil
         workflow = .continuous
         activeScenario = preset.rawValue
         isLogging = true
@@ -363,13 +397,13 @@ final class AccessoryBridge: NSObject, ObservableObject, StreamDelegate {
         switch eventCode {
         case .openCompleted:
             if aStream === outputStream {
-                isConnected = true
-                status = "Connected to \(connectedName ?? "OBDLink")"
+                outputReady = true
                 appendLog("Output stream opened")
-                enqueue([q("ATI", 5, "Initial adapter check")])
-            } else {
+            } else if aStream === inputStream {
+                inputReady = true
                 appendLog("Input stream opened")
             }
+            completeConnectionIfReady()
 
         case .hasBytesAvailable:
             readAvailableBytes()
@@ -380,16 +414,30 @@ final class AccessoryBridge: NSObject, ObservableObject, StreamDelegate {
         case .errorOccurred:
             let message = aStream.streamError?.localizedDescription ?? "unknown stream error"
             appendLog("Stream error: \(message)")
-            status = "Connection error"
+            failConnection("Connection error: \(message)")
 
         case .endEncountered:
             appendLog("Stream ended")
-            status = "Disconnected"
-            close()
+            failConnection("Accessory disconnected")
 
         default:
             break
         }
+    }
+
+    private func completeConnectionIfReady() {
+        guard inputReady, outputReady, !isConnected else { return }
+        connectionTimeoutWorkItem?.cancel()
+        connectionTimeoutWorkItem = nil
+        isConnecting = false
+        isConnected = true
+        status = "Connected to \(connectedName ?? "OBDLink")"
+        enqueue([q("ATI", 5, "Initial adapter check")])
+    }
+
+    private func failConnection(_ message: String) {
+        close(preserveStatus: true)
+        status = message
     }
 
     private func enqueue(_ commands: [QueuedCommand]) {
@@ -403,7 +451,11 @@ final class AccessoryBridge: NSObject, ObservableObject, StreamDelegate {
     }
 
     private func startNextCommandIfPossible() {
-        guard activeCommand == nil else { return }
+        guard activeCommand == nil, !discardingUntilPrompt else { return }
+        guard isConnected else {
+            isBusy = false
+            return
+        }
         guard !commandQueue.isEmpty else {
             isBusy = false
             queueDidDrain()
@@ -464,6 +516,11 @@ final class AccessoryBridge: NSObject, ObservableObject, StreamDelegate {
             appendRaw(display)
             recorder.raw(display)
 
+            if discardingUntilPrompt {
+                if text.contains(">") { finishPromptRecovery() }
+                continue
+            }
+
             guard activeCommand != nil else { continue }
             activeBuffer.append(text)
             while activeBuffer.hasPrefix(">") || activeBuffer.hasPrefix("\r>") || activeBuffer.hasPrefix("\n>") {
@@ -497,6 +554,35 @@ final class AccessoryBridge: NSObject, ObservableObject, StreamDelegate {
             }
         }
 
+        if timedOut {
+            beginPromptRecovery(sendBreak: true)
+        } else {
+            DispatchQueue.main.async { [weak self] in
+                self?.startNextCommandIfPossible()
+            }
+        }
+    }
+
+    private func beginPromptRecovery(sendBreak: Bool) {
+        discardingUntilPrompt = true
+        promptRecoveryWorkItem?.cancel()
+        if sendBreak, let data = "\r".data(using: .ascii) {
+            pendingWrites.insert(data, at: 0)
+            flushWrites()
+        }
+        let work = DispatchWorkItem { [weak self] in
+            self?.finishPromptRecovery()
+        }
+        promptRecoveryWorkItem = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2, execute: work)
+    }
+
+    private func finishPromptRecovery() {
+        guard discardingUntilPrompt else { return }
+        promptRecoveryWorkItem?.cancel()
+        promptRecoveryWorkItem = nil
+        discardingUntilPrompt = false
+        activeBuffer = ""
         DispatchQueue.main.async { [weak self] in
             self?.startNextCommandIfPossible()
         }
@@ -621,10 +707,7 @@ final class AccessoryBridge: NSObject, ObservableObject, StreamDelegate {
 
         case .continuous:
             if continuousPreset != nil {
-                nextCycleWorkItem?.cancel()
-                let work = DispatchWorkItem { [weak self] in self?.enqueueContinuousCycle() }
-                nextCycleWorkItem = work
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15, execute: work)
+                scheduleContinuousCycle(after: 0.05)
             }
 
         case .none:
@@ -632,13 +715,26 @@ final class AccessoryBridge: NSObject, ObservableObject, StreamDelegate {
         }
     }
 
+    private func scheduleContinuousCycle(after delay: TimeInterval) {
+        nextCycleWorkItem?.cancel()
+        let work = DispatchWorkItem { [weak self] in self?.enqueueContinuousCycle() }
+        nextCycleWorkItem = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + max(0.05, delay), execute: work)
+    }
+
     private func enqueueContinuousCycle() {
         guard workflow == .continuous, let preset = continuousPreset else { return }
-        continuousCycleCount += 1
+        let now = Date()
         let planned = professional.plannedCommands(for: preset)
-        var commands: [QueuedCommand]
+        var commands: [QueuedCommand] = []
+
         if !planned.isEmpty {
-            commands = planned.map { q($0.text, $0.timeout, $0.purpose) }
+            for item in planned {
+                let due = continuousNextDue[item.text] ?? .distantPast
+                guard due <= now else { continue }
+                commands.append(q(item.text, item.timeout, item.purpose))
+                continuousNextDue[item.text] = now.addingTimeInterval(1 / max(0.05, item.targetFrequencyHz))
+            }
         } else {
             let requested: [UInt8]
             if preset == .allSupported, !supportedPIDs.isEmpty {
@@ -646,37 +742,61 @@ final class AccessoryBridge: NSObject, ObservableObject, StreamDelegate {
             } else {
                 requested = preset.preferredPIDs
             }
-            let filtered = requested.filter { supportedPIDs.isEmpty || supportedPIDs.contains($0) }
-            commands = filtered.map {
-                q(String(format: "01%02X", $0), 8, PIDCatalog.definitions[$0]?.name ?? "Live PID")
+            for pid in requested where supportedPIDs.isEmpty || supportedPIDs.contains(pid) {
+                let command = String(format: "01%02X", pid)
+                let due = continuousNextDue[command] ?? .distantPast
+                guard due <= now else { continue }
+                commands.append(q(command, 8, PIDCatalog.definitions[pid]?.name ?? "Live PID"))
+                continuousNextDue[command] = now.addingTimeInterval(1)
             }
         }
-        if continuousCycleCount % 20 == 1 {
+
+        let healthDue = lastContinuousHealthAt.map { now.timeIntervalSince($0) >= 30 } ?? true
+        if healthDue {
             commands.insert(q("ATRV", 3, "Adapter voltage"), at: 0)
             commands.append(q("0101", 8, "Readiness/MIL snapshot"))
             commands.append(q("07", 10, "Pending DTC snapshot"))
+            lastContinuousHealthAt = now
         }
+
+        if commands.isEmpty {
+            let delay = continuousNextDue.values
+                .map { max(0.05, $0.timeIntervalSinceNow) }
+                .min() ?? 0.25
+            scheduleContinuousCycle(after: min(0.5, delay))
+            return
+        }
+
+        continuousCycleCount += 1
         planTotal = commands.count
         planCompleted = 0
         progress = 0
-        progressText = "Cycle \(continuousCycleCount)"
+        progressText = "Cycle \(continuousCycleCount) · frequency-aware"
         enqueue(commands)
     }
 
     private func stopWorkflow(save: Bool) {
+        let hadActiveCommand = activeCommand != nil
+        let activeWasMonitor = activeCommand?.text.hasPrefix("STM") == true
         nextCycleWorkItem?.cancel()
         timeoutWorkItem?.cancel()
         nextCycleWorkItem = nil
         timeoutWorkItem = nil
         commandQueue.removeAll()
+        pendingWrites.removeAll()
         activeCommand = nil
         activeBuffer = ""
         workflow = .none
         continuousPreset = nil
+        continuousNextDue.removeAll()
+        lastContinuousHealthAt = nil
         isBusy = false
         isLogging = false
         progress = 0
         progressText = ""
+        if hadActiveCommand {
+            beginPromptRecovery(sendBreak: activeWasMonitor)
+        }
         if save {
             finishRecorder(summaryLabel: "Stopped by user")
         }
@@ -727,27 +847,11 @@ final class AccessoryBridge: NSObject, ObservableObject, StreamDelegate {
     }
 
     private func normalized(_ value: String) -> String {
-        value
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .uppercased()
-            .replacingOccurrences(of: " ", with: "")
+        ReadOnlyCommandPolicy.normalize(value)
     }
 
     private func isSafeReadOnlyManualCommand(_ command: String) -> Bool {
-        let compact = normalized(command)
-        if compact.range(of: "^[0-9A-F]+$", options: .regularExpression) != nil,
-           compact.count >= 2 {
-            let mode = String(compact.prefix(2))
-            return ["01","02","03","06","07","09","0A"].contains(mode)
-        }
-
-        let safeExact = [
-            "ATI","ATRV","ATDP","ATDPN","ATH0","ATH1","ATS0","ATS1","ATL0","ATL1",
-            "ATE0","ATE1","ATSP0","ATZ","STI","STDI","STIX","STDIX","STMFR",
-            "STPR","STPRS","STPBRR","STVR"
-        ]
-        if safeExact.contains(compact) { return true }
-        return compact.range(of: "^STM(A)?[0-9]+$", options: .regularExpression) != nil
+        ReadOnlyCommandPolicy.isAllowed(command)
     }
 
     private func compact(_ value: String) -> String {
@@ -805,4 +909,36 @@ final class AccessoryBridge: NSObject, ObservableObject, StreamDelegate {
             log = String(log.suffix(limit))
         }
     }
+
+    private func configureDemoState() {
+        accessories = [
+            AccessorySummary(
+                id: 1,
+                name: "OBDLink MX+",
+                model: "MX+",
+                manufacturer: "OBD Solutions",
+                protocols: [Self.obdLinkProtocol]
+            )
+        ]
+        connectedName = "OBDLink MX+"
+        status = "Connected to OBDLink MX+"
+        isConnected = true
+        isConnecting = false
+        protocolDescription = "ISO 15765-4 CAN (11 bit, 500 kbaud)"
+        supportedPIDCount = 43
+        vin = "JMZCR19F270123456"
+        latestValues = [
+            "Engine RPM": "760 rpm",
+            "Short fuel trim B1": "-22.00 %",
+            "Long fuel trim B1": "-8.00 %",
+            "Coolant temperature": "91.00 °C",
+            "Mass air flow": "3.10 g/s",
+            "Commanded EVAP purge": "12.00 %",
+            "Control module voltage": "14.10 V"
+        ]
+        dtcs = ["P2188 [stored] — System too rich at idle, bank 1"]
+        log = "[09:00:00.000] Demo mode for automated UX testing\n41 0C 0B E0 >\n"
+        professional.analysisClient.configureForUITesting()
+    }
+
 }
