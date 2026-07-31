@@ -46,6 +46,13 @@ let pendingRemoteIce=[];
 const pending=new Map();
 function say(text){toast.textContent=String(text||'');toast.style.display='block';clearTimeout(say.timer);say.timer=setTimeout(()=>toast.style.display='none',1800)}
 function status(text,ok=false){state.textContent=text;dot.classList.toggle('ok',ok)}
+async function logEvent(event, detail={}){
+  try{
+    if(!mq?.connected||!topicHost)return;
+    await publish(topicHost,{type:'viewer.log',viewerId,event,detail:{...detail,state:pc?.connectionState||'none',dc:dc?.readyState||'closed',signal:mq?.connected?'open':'closed'},url:location.href.split('#')[0]});
+  }catch{}
+}
+function sig(m={}){return{type:m.type,viewerId:m.viewerId?String(m.viewerId).slice(0,8):undefined,hasSdp:!!m.sdp,hasCandidate:!!m.candidate,event:m.event,error:m.error,state:m.state,dc:m.dc,signal:m.signal}}
 function hex(bytes){return [...new Uint8Array(bytes)].map(x=>x.toString(16).padStart(2,'0')).join('')}
 function b64(bytes){let s='';const a=new Uint8Array(bytes);for(let i=0;i<a.length;i+=0x8000)s+=String.fromCharCode(...a.subarray(i,i+0x8000));return btoa(s).replaceAll('+','-').replaceAll('/','_').replace(/=+$/,'')}
 function unb64(text){const s=text.replaceAll('-','+').replaceAll('_','/')+'==='.slice((text.length+3)%4);const raw=atob(s);return Uint8Array.from(raw,c=>c.charCodeAt(0))}
@@ -61,28 +68,30 @@ function deviceProfile(){return{userAgent:navigator.userAgent,language:navigator
 async function syncProfile(){if(profileSent||dc?.readyState!=='open')return;profileSent=true;try{await command({op:'deviceProfile',profile:deviceProfile(),url:TARGET_URL});status('iPhone 11 profile · P2P',true);maybeE2E()}catch(error){profileSent=false;status('profile retrying');say(error.message);setTimeout(syncProfile,900)}}
 function maybeReady(){const live=dc?.readyState==='open'&&!!video.srcObject;if(live){status(profileSent?'iPhone 11 profile · P2P':'P2P connected',true);clearInterval(readyTimer);syncProfile()}return live}
 async function maybeE2E(){if(!E2E||e2eDone||dc?.readyState!=='open'||!video.srcObject||!profileSent)return;e2eDone=true;try{const r=await command({op:'viewport'});if(!r?.ok||r.width!==414||r.height!==896)throw new Error('iPhone profile mismatch');status('E2E PASS · iPhone 11',true)}catch(error){e2eDone=false;status('E2E FAIL');say(error.message)}}
-function bindData(channel){dc=channel;channel.onopen=()=>{maybeReady()||status('P2P control',true)};channel.onmessage=e=>receive(e.data);channel.onclose=()=>{if(dc===channel)dc=null;if(!closed){status(video.srcObject?'video live · control reconnecting':'control reconnecting',!!video.srcObject);sendReady()}};channel.onerror=()=>status('control error')}
+function bindData(channel){dc=channel;logEvent('dc.create');channel.onopen=()=>{logEvent('dc.open');maybeReady()||status('P2P control',true)};channel.onmessage=e=>receive(e.data);channel.onclose=()=>{logEvent('dc.close');if(dc===channel)dc=null;if(!closed){status(video.srcObject?'video live · control reconnecting':'control reconnecting',!!video.srcObject);sendReady()}};channel.onerror=()=>{logEvent('dc.error');status('control error')}}
 async function addRemoteCandidate(candidate){if(!pc||!candidate)return;if(!pc.remoteDescription){pendingRemoteIce.push(candidate);return}try{await pc.addIceCandidate(candidate)}catch(error){console.warn('remote ICE',error)}}
 async function acceptOffer(message){
   if(message.viewerId!==viewerId||!message.sdp)return;
   if(pc&&['new','connecting','connected'].includes(pc.connectionState))return;
   closePeer();
   const peer=new RTCPeerConnection(ICE);pc=peer;
-  peer.ontrack=event=>{if(pc!==peer)return;video.srcObject=event.streams[0];empty.style.display='none';video.play().catch(()=>{});maybeReady()||status('P2P video',true)};
+  peer.ontrack=event=>{if(pc!==peer)return;logEvent('track',{tracks:event.streams?.[0]?.getTracks?.().length||0});video.srcObject=event.streams[0];empty.style.display='none';video.play().catch(()=>{});maybeReady()||status('P2P video',true)};
   peer.ondatachannel=event=>{if(pc===peer)bindData(event.channel)};
   peer.onicecandidate=e=>{if(pc===peer&&e.candidate)publish(topicHost,{type:'webrtc.ice',viewerId,candidate:e.candidate.toJSON()})};
   peer.onconnectionstatechange=()=>{if(pc!==peer)return;const s=peer.connectionState;if(s==='connected')maybeReady();if(['failed','closed'].includes(s)&&!closed){publish(topicHost,{type:'viewer.reset',viewerId}).catch(()=>{});closePeer();status('P2P reconnecting');setTimeout(sendReady,500)}};
   try{
+    logEvent('offer.in',{viewerId:String(message.viewerId||'').slice(0,8)});
     await peer.setRemoteDescription(message.sdp);
     for(const c of pendingRemoteIce.splice(0))await addRemoteCandidate(c);
     await peer.setLocalDescription(await peer.createAnswer());
     await new Promise(resolve=>setTimeout(resolve,500));
     await publish(topicHost,{type:'webrtc.answer',viewerId,sdp:peer.localDescription});
+    logEvent('answer.sent');
     status('answer sent · gathering ICE',true);
   }catch(error){if(pc===peer)closePeer();status('answer error');console.error(error);sendReady()}
 }
-async function onSignal(message){if(message.room!==ROOM)return;if(message.type==='host.ready'){if(dc?.readyState!=='open')sendReady();return}if(message.viewerId!==viewerId)return;if(message.type==='webrtc.offer'){await acceptOffer(message);return}if(message.type==='webrtc.ice')await addRemoteCandidate(message.candidate)}
-async function sendReady(){if(closed||dc?.readyState==='open')return;await publish(topicHost,{type:'viewer.ready',viewerId,version:'7.1'})}
+async function onSignal(message){logEvent('signal.in',sig(message));if(message.room!==ROOM)return;if(message.type==='host.ready'){if(dc?.readyState!=='open')sendReady();return}if(message.viewerId!==viewerId)return;if(message.type==='webrtc.offer'){await acceptOffer(message);return}if(message.type==='webrtc.ice')await addRemoteCandidate(message.candidate)}
+async function sendReady(){if(closed||dc?.readyState==='open')return;await logEvent('ready.before-send');await publish(topicHost,{type:'viewer.ready',viewerId,version:'7.1'});await logEvent('ready.sent')}
 function connectMqtt(){
   if(typeof mqtt!=='object'&&typeof mqtt!=='function'){status('MQTT library failed');setTimeout(connectMqtt,1500);return}
   const clientId='mbv71-view-'+crypto.randomUUID().replaceAll('-','');
