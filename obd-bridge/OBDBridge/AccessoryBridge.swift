@@ -268,7 +268,7 @@ final class AccessoryBridge: NSObject, ObservableObject, StreamDelegate {
         planCompleted = 0
 
         recorder.begin(
-            label: "Deep-read-only-scan",
+            label: SessionFileNaming.safeComponent("Deep-read-only-scan") + "-" + String(UUID().uuidString.prefix(8)),
             fuelMode: fuelMode,
             metadata: [
                 "vehicle": "Auto-detect",
@@ -348,7 +348,7 @@ final class AccessoryBridge: NSObject, ObservableObject, StreamDelegate {
         progressText = "Continuous logging"
 
         recorder.begin(
-            label: preset.rawValue,
+            label: SessionFileNaming.safeComponent(preset.rawValue) + "-" + String(UUID().uuidString.prefix(8)),
             fuelMode: fuelMode,
             metadata: [
                 "vehicle": "Auto-detect",
