@@ -51,9 +51,11 @@ jobs:
       - name: Validate generated diagnostic data
         run: |
           set -euo pipefail
-          python3 -m pip install --disable-pip-version-check "jsonschema[format]>=4.23,<5"
-          python3 -m py_compile obd-bridge/tools/*.py
-          python3 obd-bridge/tools/validate_vehicle_data_packs.py
+          rm -rf /tmp/obd-validate-venv
+          python3 -m venv /tmp/obd-validate-venv
+          /tmp/obd-validate-venv/bin/python -m pip install --disable-pip-version-check "jsonschema[format]>=4.23,<5"
+          /tmp/obd-validate-venv/bin/python -m py_compile obd-bridge/tools/*.py
+          /tmp/obd-validate-venv/bin/python obd-bridge/tools/validate_vehicle_data_packs.py
 
       - name: Install XcodeGen
         run: brew install xcodegen
