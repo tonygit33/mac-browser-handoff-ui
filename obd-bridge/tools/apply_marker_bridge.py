@@ -4,15 +4,23 @@ from pathlib import Path
 path = Path(__file__).resolve().parents[1] / "OBDBridge" / "AccessoryBridge.swift"
 text = path.read_text()
 
-old = """    func addMarker(_ marker: String) {
-        guard isLogging else { return }
-        recorder.marker(marker)
+old = """    func addMarker(_ text: String) {
+        guard recorder.currentDirectory != nil else {
+            appendLog("Start a scan or logging session before adding markers.")
+            return
+        }
+        recorder.marker(text)
+        appendLog("MARKER: \(text)")
     }
 """
-new = """    func addMarker(_ marker: String) {
-        guard isLogging else { return }
-        recorder.marker(marker)
-        professional.addMarker(marker)
+new = """    func addMarker(_ text: String) {
+        guard recorder.currentDirectory != nil else {
+            appendLog("Start a scan or logging session before adding markers.")
+            return
+        }
+        recorder.marker(text)
+        professional.addMarker(text)
+        appendLog("MARKER: \(text)")
     }
 """
 if text.count(old) != 1:
