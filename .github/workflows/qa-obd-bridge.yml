@@ -141,29 +141,29 @@ jobs:
           test -f "$APP_PATH/core-sae-j1979-generated.diagnostic-pack.json"
           test -f "$APP_PATH/core-sae-j1979.diagnostic-pack.json"
           test -f "$APP_PATH/mazda-5-cr-2007.diagnostic-pack.json"
-          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_PATH/Info.plist")" = "0.4.3"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_PATH/Info.plist")" = "0.4.4"
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$APP_PATH/Info.plist")" = "9"
           grep -Fq 'rules-on-device' OBDBridge/LocalOBDAnalysisEngine.swift
           grep -Fq 'discardingUntilPrompt' OBDBridge/AccessoryBridge.swift
           grep -Fq 'ReadOnlyCommandPolicy' OBDBridge/AccessoryBridge.swift
           file "$APP_PATH/OBDBridge" | grep -Fq 'Mach-O 64-bit executable arm64'
           test "$(find "$APP_PATH" -name '*.dylib' -o -name '*.framework' | wc -l | tr -d ' ')" = "0"
-          rm -rf Payload OBDBridge-0.4.3-QA.ipa
+          rm -rf Payload OBDBridge-0.4.4-QA.ipa
           mkdir Payload
           cp -R "$APP_PATH" Payload/
-          /usr/bin/ditto -c -k --sequesterRsrc --keepParent Payload OBDBridge-0.4.3-QA.ipa
-          unzip -t OBDBridge-0.4.3-QA.ipa
-          shasum -a 256 OBDBridge-0.4.3-QA.ipa | tee qa-artifacts/ipa-sha256.txt
+          /usr/bin/ditto -c -k --sequesterRsrc --keepParent Payload OBDBridge-0.4.4-QA.ipa
+          unzip -t OBDBridge-0.4.4-QA.ipa
+          shasum -a 256 OBDBridge-0.4.4-QA.ipa | tee qa-artifacts/ipa-sha256.txt
 
       - name: Upload QA evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: OBDBridge-0.4.3-full-qa
+          name: OBDBridge-0.4.4-full-qa
           path: |
             obd-bridge/QAResults.xcresult
             obd-bridge/qa-artifacts
-            obd-bridge/OBDBridge-0.4.3-QA.ipa
+            obd-bridge/OBDBridge-0.4.4-QA.ipa
           if-no-files-found: warn
           retention-days: 14
 
