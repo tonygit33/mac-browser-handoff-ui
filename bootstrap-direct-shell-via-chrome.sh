@@ -1,78 +1,51 @@
 #!/bin/bash
-set -euo pipefail
+set -u
 
 SUPPORT="$HOME/Library/Application Support/MacBrowserBridge"
 LOG_DIR="$HOME/Library/Logs/MacBrowserBridge"
 LOG_FILE="$LOG_DIR/direct-shell-bootstrap.log"
 WORKSPACE="$HOME/mac-browser-agent-workspace"
 LIVE="$WORKSPACE/bridge/tools/mac-browser-bridge"
-RUNTIME="$WORKSPACE/direct-shell-runtime/tools/mac-browser-bridge"
+DEST="$WORKSPACE/direct-shell-runtime"
 BRANCH="mac-browser-bridge"
 REPO="tonygit33/web"
 NODE="/Users/anton/.nvm/versions/node/v22.23.2/bin/node"
 GH="/Users/anton/.local/bin/gh"
 LOCK="/tmp/direct-shell-browser-bootstrap.lock"
-NORMAL_CHROME="$LIVE/run-chrome.normal.sh"
 
-mkdir -p "$LOG_DIR" "$WORKSPACE" "$LIVE" "$RUNTIME/src"
+mkdir -p "$LOG_DIR" "$WORKSPACE"
 exec >>"$LOG_FILE" 2>&1
-printf '\n=== minimal direct shell browser bootstrap %s ===\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+printf '\n=== direct shell browser bootstrap %s ===\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 if ! mkdir "$LOCK" 2>/dev/null; then
-  echo "Another bootstrap instance owns $LOCK"
+  printf 'Another bootstrap instance owns %s\n' "$LOCK"
   exit 0
 fi
+trap 'rmdir "$LOCK" 2>/dev/null || true' EXIT
 
 [ -x "$NODE" ] || NODE="$(command -v node || true)"
-for candidate in "$GH" /opt/homebrew/bin/gh /usr/local/bin/gh; do
-  if [ -x "$candidate" ]; then GH="$candidate"; break; fi
-done
 [ -x "$GH" ] || GH="$(command -v gh || true)"
 [ -x "$NODE" ] || { echo 'Node is unavailable' >&2; exit 1; }
 [ -x "$GH" ] || { echo 'GitHub CLI is unavailable' >&2; exit 1; }
+
 "$GH" auth status >/dev/null 2>&1 || { echo 'GitHub CLI is not authenticated' >&2; exit 1; }
+"$GH" auth setup-git >/dev/null 2>&1 || true
 
-fetch_file() {
-  local source="$1" destination="$2" mode="$3" temporary
-  temporary="${destination}.bootstrap.$$"
-  mkdir -p "$(dirname "$destination")"
-  "$GH" api "repos/$REPO/contents/$source?ref=$BRANCH" --jq .content \
-    | tr -d '\n' \
-    | /usr/bin/base64 -D > "$temporary"
-  chmod "$mode" "$temporary"
-  mv -f "$temporary" "$destination"
-}
+if [ -d "$DEST/.git" ]; then
+  git -C "$DEST" fetch origin "$BRANCH"
+  git -C "$DEST" checkout -B "$BRANCH" "origin/$BRANCH"
+else
+  rm -rf "$DEST"
+  "$GH" repo clone "$REPO" "$DEST" -- --branch "$BRANCH" --single-branch
+fi
 
-fetch_file tools/mac-browser-bridge/run-chrome.sh "$NORMAL_CHROME" 700
+BRIDGE="$DEST/tools/mac-browser-bridge"
+"$NODE" --check "$BRIDGE/src/direct-shell-server.mjs"
+"$NODE" --check "$BRIDGE/src/relay-agent.mjs"
+"$NODE" --check "$BRIDGE/smoke-direct-shell.mjs"
+chmod 700 "$BRIDGE/run-direct-shell.sh" "$BRIDGE/install-direct-shell.sh" "$BRIDGE/run-chrome.sh"
 
-restore_chrome() {
-  local code=$?
-  trap - EXIT
-  if [ -s "$NORMAL_CHROME" ]; then
-    install -m 700 "$NORMAL_CHROME" "$LIVE/run-chrome.sh"
-  fi
-  rmdir "$LOCK" 2>/dev/null || true
-  if [ -x "$LIVE/run-chrome.sh" ]; then
-    echo "Restoring normal Chrome launcher; bootstrap exit=$code"
-    exec /bin/bash "$LIVE/run-chrome.sh"
-  fi
-  exit "$code"
-}
-trap restore_chrome EXIT
-
-fetch_file tools/mac-browser-bridge/src/direct-shell-server.mjs "$RUNTIME/src/direct-shell-server.mjs" 600
-fetch_file tools/mac-browser-bridge/run-direct-shell.sh "$RUNTIME/run-direct-shell.sh" 700
-fetch_file tools/mac-browser-bridge/install-direct-shell.sh "$RUNTIME/install-direct-shell.sh" 700
-fetch_file tools/mac-browser-bridge/smoke-direct-shell.mjs "$RUNTIME/smoke-direct-shell.mjs" 600
-fetch_file tools/mac-browser-bridge/src/relay-agent.mjs "$RUNTIME/src/relay-agent.mjs" 600
-
-"$NODE" --check "$RUNTIME/src/direct-shell-server.mjs"
-"$NODE" --check "$RUNTIME/src/relay-agent.mjs"
-"$NODE" --check "$RUNTIME/smoke-direct-shell.mjs"
-BRIDGE_WORKSPACE="$WORKSPACE" BRIDGE_DIR="$RUNTIME" /bin/bash "$RUNTIME/install-direct-shell.sh"
-
-mkdir -p "$LIVE/src"
-install -m 600 "$RUNTIME/src/relay-agent.mjs" "$LIVE/src/relay-agent.mjs"
+BRIDGE_WORKSPACE="$WORKSPACE" /bin/bash "$BRIDGE/install-direct-shell.sh"
 
 SETTINGS="$HOME/.mac-browser-bridge/transport-settings.json"
 "$NODE" - "$SETTINGS" <<'NODE'
@@ -87,12 +60,12 @@ fs.mkdirSync(path.dirname(file), { recursive: true });
 fs.writeFileSync(file, JSON.stringify(value, null, 2) + '\n', { mode: 0o600 });
 NODE
 
-for LABEL in com.anton.mac-browser-relay com.anton.mac-browser-realtime; do
+for LABEL in $(launchctl list | awk '$3 ~ /relay/ {print $3}'); do
   launchctl kickstart -k "gui/$(id -u)/$LABEL" >/dev/null 2>&1 || true
 done
 
 . "$SUPPORT/direct-shell.env"
-BRIDGE_DIRECT_SHELL_ORIGIN="http://127.0.0.1:4893" "$NODE" "$RUNTIME/smoke-direct-shell.mjs" > /tmp/direct-shell-smoke.json
+BRIDGE_DIRECT_SHELL_ORIGIN="http://127.0.0.1:4893" "$NODE" "$BRIDGE/smoke-direct-shell.mjs" > /tmp/direct-shell-smoke.json
 /usr/bin/curl -fsS -H "X-Bridge-Token: $BRIDGE_DIRECT_SHELL_TOKEN" http://127.0.0.1:4893/health > /tmp/direct-shell-health.json
 
 "$NODE" - /tmp/direct-shell-health.json /tmp/direct-shell-smoke.json /tmp/direct-shell-live.json <<'NODE'
@@ -106,7 +79,7 @@ const value = {
   ok,
   installedAt: new Date().toISOString(),
   host: os.hostname(),
-  route: 'browser-compat-minimal-bootstrap',
+  route: 'browser-v71-https-bootstrap',
   mode: health.mode,
   maxSessions: health.maxSessions,
   ttlMs: health.ttlMs,
@@ -126,8 +99,11 @@ else
   "$GH" api --method PUT "repos/$REPO/contents/$RESULT_PATH" -f message='Confirm direct 12-session shell live on Mac' -f branch="$BRANCH" -f content="$CONTENT" >/dev/null
 fi
 
-echo 'Direct shell installation and 12-session smoke test complete.'
+mkdir -p "$LIVE"
+install -m 700 "$BRIDGE/run-chrome.sh" "$LIVE/run-chrome.sh.next"
+mv -f "$LIVE/run-chrome.sh.next" "$LIVE/run-chrome.sh"
+
+printf 'Direct shell installation complete; restoring Chrome.\n'
 trap - EXIT
-install -m 700 "$NORMAL_CHROME" "$LIVE/run-chrome.sh"
 rmdir "$LOCK" 2>/dev/null || true
 exec /bin/bash "$LIVE/run-chrome.sh"
