@@ -1,0 +1,34 @@
+name: Apply Observed Regime Semantics
+
+on:
+  push:
+    branches: [obd-full-qa-v043]
+    paths:
+      - "obd-bridge/tools/apply_observed_regime_notes.py"
+      - ".github/workflows/apply-observed-regime-notes.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: obd-full-qa-v043
+          fetch-depth: 0
+      - name: Apply semantic correction
+        run: |
+          set -euo pipefail
+          python3 obd-bridge/tools/apply_observed_regime_notes.py
+          git diff --check
+      - name: Commit correction
+        run: |
+          set -euo pipefail
+          git config user.name "OBD QA Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add obd-bridge/OBDBridge/ProfessionalDiagnosticsRuntime.swift
+          git commit -m "Record observed regimes without claiming phase completion"
+          git push origin HEAD:obd-full-qa-v043
