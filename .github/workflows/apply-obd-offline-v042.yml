@@ -1,0 +1,33 @@
+name: Apply OBD Offline v042
+
+on:
+  push:
+    branches:
+      - obd-offline-v042
+    paths:
+      - "obd-bridge/tools/apply_offline_v042.py"
+      - ".github/workflows/apply-obd-offline-v042.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: obd-offline-v042
+          fetch-depth: 0
+      - run: |
+          set -euo pipefail
+          python obd-bridge/tools/apply_offline_v042.py
+          git diff --check
+      - run: |
+          set -euo pipefail
+          git config user.name "OBD Bridge Builder"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -m "Add on-device diagnostic fallback and release 0.4.2"
+          git push origin HEAD:obd-offline-v042
