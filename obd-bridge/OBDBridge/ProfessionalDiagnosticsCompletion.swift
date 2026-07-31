@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 
 struct ProfessionalELMCommand: Hashable {
@@ -61,13 +62,14 @@ final class OBDAnalysisClient: ObservableObject {
                         userInfo: [NSLocalizedDescriptionKey: "AI snapshot exceeds the 4 MB service limit."]
                     )
                 }
+                let cloudPayload = try Self.cloudPayload(from: snapshotData)
 
                 var request = URLRequest(url: endpoint)
                 request.httpMethod = "POST"
                 request.timeoutInterval = 90
                 request.setValue("application/json", forHTTPHeaderField: "Content-Type")
                 request.setValue("OBDBridge-iOS/0.4.3", forHTTPHeaderField: "User-Agent")
-                request.httpBody = snapshotData
+                request.httpBody = cloudPayload
 
                 let (data, response) = try await URLSession.shared.data(for: request)
                 guard let http = response as? HTTPURLResponse else {
@@ -95,7 +97,7 @@ final class OBDAnalysisClient: ObservableObject {
                     parsed,
                     url: destination,
                     status: "Cloud analysis saved",
-                    detail: "The cloud service analyzed the read-only snapshot."
+                    detail: "The cloud service analyzed the read-only snapshot. The VIN was hashed on this iPhone before upload."
                 )
             } catch {
                 let cloudError = error
@@ -118,6 +120,29 @@ final class OBDAnalysisClient: ObservableObject {
                 }
             }
         }
+    }
+
+    static func cloudPayload(from snapshotData: Data) throws -> Data {
+        guard var root = try JSONSerialization.jsonObject(with: snapshotData) as? [String: Any] else {
+            throw NSError(
+                domain: "OBDAnalysis",
+                code: 3,
+                userInfo: [NSLocalizedDescriptionKey: "Snapshot is not a JSON object."]
+            )
+        }
+        guard var vehicle = root["vehicle"] as? [String: Any],
+              let vin = vehicle["vin"] as? String,
+              !vin.isEmpty else {
+            return snapshotData
+        }
+
+        let digest = SHA256.hash(data: Data(vin.uppercased().utf8))
+            .map { String(format: "%02x", $0) }
+            .joined()
+        vehicle.removeValue(forKey: "vin")
+        vehicle["vinHash"] = String(digest.prefix(16))
+        root["vehicle"] = vehicle
+        return try JSONSerialization.data(withJSONObject: root, options: [.sortedKeys])
     }
 
     func configureForUITesting() {
