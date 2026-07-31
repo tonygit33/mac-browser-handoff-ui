@@ -1,0 +1,35 @@
+name: Apply OBD Finish v040
+
+on:
+  push:
+    branches:
+      - obd-finish-v040
+    paths:
+      - "obd-bridge/tools/apply_finish_v040.py"
+      - ".github/workflows/apply-obd-finish-v040.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: obd-finish-v040
+          fetch-depth: 0
+      - name: Apply integration patch
+        run: |
+          set -euo pipefail
+          python obd-bridge/tools/apply_finish_v040.py
+          git diff --check
+      - name: Commit result
+        run: |
+          set -euo pipefail
+          git config user.name "OBD Bridge Builder"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -m "Finish professional OBD scan and AI runtime"
+          git push origin HEAD:obd-finish-v040

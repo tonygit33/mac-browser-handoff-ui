@@ -10,6 +10,7 @@ on:
     branches:
       - main
       - obd-bridge-mvp
+      - obd-finish-v040
     paths:
       - "obd-bridge/**"
       - ".github/workflows/build-obd-bridge.yml"
@@ -17,10 +18,13 @@ on:
 permissions:
   contents: read
 
+env:
+  OBDB_SAEJ1979_REVISION: d3259214a9e0340c4a6cff9ec5f8ff5953eee6f2
+
 jobs:
   build:
     runs-on: macos-15
-    timeout-minutes: 20
+    timeout-minutes: 25
 
     steps:
       - name: Checkout
@@ -31,6 +35,27 @@ jobs:
           sw_vers
           xcodebuild -version
           swift --version
+          python3 --version
+
+      - name: Generate complete pinned SAE J1979 catalog
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/obdb-saej1979
+          git clone --filter=blob:none --no-checkout https://github.com/OBDb/SAEJ1979.git /tmp/obdb-saej1979
+          git -C /tmp/obdb-saej1979 checkout "$OBDB_SAEJ1979_REVISION"
+          python3 obd-bridge/tools/sync_obdb_catalog.py \
+            /tmp/obdb-saej1979 \
+            obd-bridge/Resources/VehicleDataPacks/core-sae-j1979-generated.diagnostic-pack.json \
+            --revision "$OBDB_SAEJ1979_REVISION"
+
+      - name: Validate generated diagnostic data
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/obd-validate-venv
+          python3 -m venv /tmp/obd-validate-venv
+          /tmp/obd-validate-venv/bin/python -m pip install --disable-pip-version-check "jsonschema[format]>=4.23,<5"
+          /tmp/obd-validate-venv/bin/python -m py_compile obd-bridge/tools/*.py
+          /tmp/obd-validate-venv/bin/python obd-bridge/tools/validate_vehicle_data_packs.py
 
       - name: Install XcodeGen
         run: brew install xcodegen
@@ -54,6 +79,20 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             build
 
+      - name: Verify professional resources and binary
+        working-directory: obd-bridge
+        run: |
+          set -euo pipefail
+          APP_PATH="$(find build/Build/Products/Release-iphoneos -maxdepth 1 -name '*.app' -print -quit)"
+          test -n "$APP_PATH"
+          test -f "$APP_PATH/core-sae-j1979-generated.diagnostic-pack.json"
+          test -f "$APP_PATH/core-sae-j1979.diagnostic-pack.json"
+          test -f "$APP_PATH/mazda-5-cr-2007.diagnostic-pack.json"
+          strings "$APP_PATH/OBDBridge" | grep -F "ai-analysis.json"
+          strings "$APP_PATH/OBDBridge" | grep -F "professional-samples.jsonl"
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_PATH/Info.plist"
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$APP_PATH/Info.plist"
+
       - name: Package unsigned IPA
         working-directory: obd-bridge
         run: |
@@ -64,6 +103,7 @@ jobs:
           mkdir Payload
           cp -R "$APP_PATH" Payload/
           /usr/bin/ditto -c -k --sequesterRsrc --keepParent Payload OBDBridge-unsigned.ipa
+          shasum -a 256 OBDBridge-unsigned.ipa
           ls -lh OBDBridge-unsigned.ipa
 
       - name: Upload IPA

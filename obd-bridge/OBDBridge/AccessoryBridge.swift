@@ -46,7 +46,19 @@ final class AccessoryBridge: NSObject, ObservableObject, StreamDelegate {
     let recorder = DiagnosticSessionRecorder()
     let professional = ProfessionalDiagnosticsRuntime()
 
-    var exportURLs: [URL] { recorder.lastExportURLs }
+    var exportURLs: [URL] {
+        var urls = recorder.lastExportURLs
+        if let snapshot = professional.lastSnapshotURL {
+            urls.append(snapshot)
+            let directory = snapshot.deletingLastPathComponent()
+            for name in ["professional-samples.jsonl", "ai-analysis.json"] {
+                let url = directory.appendingPathComponent(name)
+                if FileManager.default.fileExists(atPath: url.path) { urls.append(url) }
+            }
+        }
+        if let analysis = professional.analysisClient.lastAnalysisURL { urls.append(analysis) }
+        return Array(Dictionary(grouping: urls, by: \.path).values.compactMap(\.first))
+    }
 
     private var accessory: EAAccessory?
     private var session: EASession?
@@ -511,10 +523,17 @@ final class AccessoryBridge: NSObject, ObservableObject, StreamDelegate {
             }
         }
 
+        if upper.hasPrefix("02"), upper.count >= 6 {
+            professional.recordFreezeFrame(command: upper, response: response)
+        }
+
         if upper.hasPrefix("06"), upper.count >= 4,
-           let mid = UInt8(upper.dropFirst(2).prefix(2), radix: 16),
-           mid % 0x20 == 0 {
-            supportedMIDs.formUnion(OBDDecoder.supportedIDs(responseService: 0x46, base: mid, response: response))
+           let mid = UInt8(upper.dropFirst(2).prefix(2), radix: 16) {
+            if mid % 0x20 == 0 {
+                supportedMIDs.formUnion(OBDDecoder.supportedIDs(responseService: 0x46, base: mid, response: response))
+            } else {
+                professional.recordMode06(command: upper, response: response)
+            }
         }
 
         if upper == "03" {
@@ -616,15 +635,21 @@ final class AccessoryBridge: NSObject, ObservableObject, StreamDelegate {
     private func enqueueContinuousCycle() {
         guard workflow == .continuous, let preset = continuousPreset else { return }
         continuousCycleCount += 1
-        let requested: [UInt8]
-        if preset == .allSupported, !supportedPIDs.isEmpty {
-            requested = supportedPIDs.filter { $0 % 0x20 != 0 }.sorted()
+        let planned = professional.plannedCommands(for: preset)
+        var commands: [QueuedCommand]
+        if !planned.isEmpty {
+            commands = planned.map { q($0.text, $0.timeout, $0.purpose) }
         } else {
-            requested = preset.preferredPIDs
-        }
-        let filtered = requested.filter { supportedPIDs.isEmpty || supportedPIDs.contains($0) }
-        var commands = filtered.map {
-            q(String(format: "01%02X", $0), 8, PIDCatalog.definitions[$0]?.name ?? "Live PID")
+            let requested: [UInt8]
+            if preset == .allSupported, !supportedPIDs.isEmpty {
+                requested = supportedPIDs.filter { $0 % 0x20 != 0 }.sorted()
+            } else {
+                requested = preset.preferredPIDs
+            }
+            let filtered = requested.filter { supportedPIDs.isEmpty || supportedPIDs.contains($0) }
+            commands = filtered.map {
+                q(String(format: "01%02X", $0), 8, PIDCatalog.definitions[$0]?.name ?? "Live PID")
+            }
         }
         if continuousCycleCount % 20 == 1 {
             commands.insert(q("ATRV", 3, "Adapter voltage"), at: 0)

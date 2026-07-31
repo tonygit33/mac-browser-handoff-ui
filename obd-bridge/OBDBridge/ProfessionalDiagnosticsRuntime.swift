@@ -4,11 +4,16 @@ import Foundation
 /// Live bridge between the prompt-driven OBDLink transport and the professional,
 /// vehicle-agnostic diagnostic domain model.
 final class ProfessionalDiagnosticsRuntime: ObservableObject {
-    @Published private(set) var status = "Loading diagnostic data packs…"
+    @Published var status = "Loading diagnostic data packs…"
     @Published private(set) var selectedPackIDs: [String] = []
     @Published private(set) var availableScenarioIDs: [String] = []
     @Published private(set) var decodedSignalCount = 0
     @Published private(set) var lastSnapshotURL: URL?
+
+    let analysisClient = OBDAnalysisClient()
+    var structuredFreezeFrames: [FreezeFrameRecordV1] = []
+    var structuredMode06: [Mode06RecordV1] = []
+    var lastScanPlan: DiagnosticReadPlanV1?
 
     private(set) var vehicleProfile = VehicleProfileV1(
         vin: nil,
@@ -25,9 +30,9 @@ final class ProfessionalDiagnosticsRuntime: ObservableObject {
         ecuFingerprints: []
     )
 
-    private var registry: SignalRegistryV1?
-    private var capability: DiagnosticCapabilityReportV1?
-    private var sessionDirectory: URL?
+    var registry: SignalRegistryV1?
+    var capability: DiagnosticCapabilityReportV1?
+    var sessionDirectory: URL?
     private var samplesHandle: FileHandle?
     private var sessionStartedAt: Date?
     private var scenarioLabel = ""
@@ -76,6 +81,9 @@ final class ProfessionalDiagnosticsRuntime: ObservableObject {
         invalidSamples = 0
         timedOutRequests = 0
         rawOnlySignals.removeAll()
+        structuredFreezeFrames.removeAll()
+        structuredMode06.removeAll()
+        lastScanPlan = nil
         lastSnapshotURL = nil
 
         let samplesURL = directory.appendingPathComponent("professional-samples.jsonl")
@@ -292,7 +300,7 @@ final class ProfessionalDiagnosticsRuntime: ObservableObject {
             readOnly: true,
             vehicle: vehicleProfile,
             capability: finalCapability,
-            scanPlan: nil,
+            scanPlan: lastScanPlan,
             scenarios: [
                 ScenarioExecutionV1(
                     id: UUID().uuidString,
@@ -309,8 +317,8 @@ final class ProfessionalDiagnosticsRuntime: ObservableObject {
             ],
             datasets: datasets,
             diagnosticCodes: diagnosticCodes,
-            freezeFrames: [],
-            mode06Results: [],
+            freezeFrames: structuredFreezeFrames,
+            mode06Results: structuredMode06,
             latestSamples: latestSamples.values.sorted { $0.signal.description < $1.signal.description },
             coverage: SignalCoverageSummaryV1(
                 discoveredCount: capabilitySignals.count,
