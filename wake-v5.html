@@ -1,0 +1,8 @@
+<!doctype html><meta charset="utf-8"><title>Wake Mac v5</title><body>Waking…<script>
+const q=new URLSearchParams(location.hash.slice(1));
+const room=(q.get('room')||'').toUpperCase(),secret=q.get('token')||'',signal=q.get('signal')||'wss://project-2yxp4.vercel.app/api/ws';
+const u=new URL(signal);u.searchParams.set('room',room);u.searchParams.set('role','guest');
+const ws=new WebSocket(u);
+ws.onopen=()=>{document.body.textContent='Connected';ws.send(JSON.stringify({type:'shell.wake',secret,reason:'v5-retest',delivery:'github-queue'}));setTimeout(()=>{document.body.textContent='Wake sent';ws.close()},1500)};
+ws.onerror=()=>document.body.textContent='Wake error';
+</script>
