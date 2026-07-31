@@ -10,6 +10,7 @@ struct ContentView: View {
     @State private var command = "010C"
     @State private var showShare = false
     @State private var showAdvanced = false
+    @State private var showTestSteps = false
     @State private var showDisconnectConfirmation = false
     @State private var showClearLogConfirmation = false
 
@@ -258,24 +259,6 @@ struct ContentView: View {
             .font(.caption)
             .foregroundStyle(.secondary)
 
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Test steps")
-                    .font(.subheadline.weight(.semibold))
-                ForEach(Array(selectedPreset.guidedSteps.enumerated()), id: \.offset) { index, step in
-                    HStack(alignment: .top, spacing: 8) {
-                        Text("\(index + 1)")
-                            .font(.caption.monospaced().weight(.bold))
-                            .frame(width: 24, height: 24)
-                            .background(Color.accentColor.opacity(0.12), in: Circle())
-                        Text(step)
-                            .font(.caption)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-            }
-            .padding(10)
-            .background(Color.secondary.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
-
             if let notice = selectedPreset.safetyNotice {
                 Label(notice, systemImage: "exclamationmark.triangle.fill")
                     .font(.caption)
@@ -300,6 +283,28 @@ struct ContentView: View {
             .tint(bridge.isLogging ? .red : .accentColor)
             .disabled(!bridge.isLogging && (!bridge.isConnected || bridge.isConnecting || bridge.isBusy))
             .accessibilityIdentifier(bridge.isLogging ? "Stop and save" : "Start logging")
+
+            DisclosureGroup(
+                "Review \(selectedPreset.guidedSteps.count) test steps",
+                isExpanded: $showTestSteps
+            ) {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(Array(selectedPreset.guidedSteps.enumerated()), id: \.offset) { index, step in
+                        HStack(alignment: .top, spacing: 8) {
+                            Text("\(index + 1)")
+                                .font(.caption.monospaced().weight(.bold))
+                                .frame(width: 24, height: 24)
+                                .background(Color.accentColor.opacity(0.12), in: Circle())
+                            Text(step)
+                                .font(.caption)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                }
+                .padding(.top, 8)
+            }
+            .font(.subheadline.weight(.semibold))
+            .accessibilityIdentifier("Test steps")
 
             if fuelMode == .unknown {
                 Label("Select Gasoline or LPG before recording when you know which fuel is active.", systemImage: "info.circle")
