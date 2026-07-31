@@ -44,7 +44,7 @@ final class OBDAnalysisClient: ObservableObject {
                 request.httpMethod = "POST"
                 request.timeoutInterval = 90
                 request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                request.setValue("OBDBridge-iOS/0.4", forHTTPHeaderField: "User-Agent")
+                request.setValue("OBDBridge-iOS/0.4.2", forHTTPHeaderField: "User-Agent")
                 request.httpBody = snapshotData
 
                 let (data, response) = try await URLSession.shared.data(for: request)
@@ -67,10 +67,22 @@ final class OBDAnalysisClient: ObservableObject {
                     self.lastAnalysisURL = destination
                 }
             } catch {
-                await MainActor.run {
-                    self.isAnalyzing = false
-                    self.lastError = error.localizedDescription
-                    self.status = "AI analysis failed"
+                let cloudError = error
+                do {
+                    let local = try LocalOBDAnalysisEngine.analyze(snapshotURL: snapshotURL)
+                    await MainActor.run {
+                        self.isAnalyzing = false
+                        self.summary = local.summary
+                        self.status = "On-device expert analysis saved"
+                        self.lastAnalysisURL = local.url
+                        self.lastError = "Cloud analysis unavailable: \(cloudError.localizedDescription)"
+                    }
+                } catch {
+                    await MainActor.run {
+                        self.isAnalyzing = false
+                        self.lastError = "Cloud: \(cloudError.localizedDescription) · Local: \(error.localizedDescription)"
+                        self.status = "Diagnostic analysis failed"
+                    }
                 }
             }
         }

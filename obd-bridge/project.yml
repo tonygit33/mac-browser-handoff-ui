@@ -19,8 +19,8 @@ targets:
       path: OBDBridge/Info.plist
       properties:
         CFBundleDisplayName: OBD Bridge
-        CFBundleShortVersionString: "0.4.1"
-        CFBundleVersion: "7"
+        CFBundleShortVersionString: "0.4.2"
+        CFBundleVersion: "8"
         UIFileSharingEnabled: true
         LSSupportsOpeningDocumentsInPlace: true
         OBDAnalysisEndpoint: https://project-2yxp4-kache.vercel.app/api/bridge-realtime?command=obd-analyze
@@ -36,8 +36,8 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.anton.obdbridge
         PRODUCT_NAME: OBDBridge
-        MARKETING_VERSION: "0.4.1"
-        CURRENT_PROJECT_VERSION: "7"
+        MARKETING_VERSION: "0.4.2"
+        CURRENT_PROJECT_VERSION: "8"
         INFOPLIST_FILE: OBDBridge/Info.plist
         TARGETED_DEVICE_FAMILY: "1"
         CODE_SIGN_STYLE: Automatic
