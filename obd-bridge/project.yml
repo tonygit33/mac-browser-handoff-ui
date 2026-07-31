@@ -19,8 +19,8 @@ targets:
       path: OBDBridge/Info.plist
       properties:
         CFBundleDisplayName: OBD Bridge
-        CFBundleShortVersionString: "0.4.2"
-        CFBundleVersion: "8"
+        CFBundleShortVersionString: "0.4.3"
+        CFBundleVersion: "9"
         UIFileSharingEnabled: true
         LSSupportsOpeningDocumentsInPlace: true
         OBDAnalysisEndpoint: https://project-2yxp4-kache.vercel.app/api/bridge-realtime?command=obd-analyze
@@ -36,10 +36,38 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.anton.obdbridge
         PRODUCT_NAME: OBDBridge
-        MARKETING_VERSION: "0.4.2"
-        CURRENT_PROJECT_VERSION: "8"
+        MARKETING_VERSION: "0.4.3"
+        CURRENT_PROJECT_VERSION: "9"
         INFOPLIST_FILE: OBDBridge/Info.plist
         TARGETED_DEVICE_FAMILY: "1"
         CODE_SIGN_STYLE: Automatic
     scheme:
-      testTargets: []
+      testTargets:
+        - OBDBridgeTests
+        - OBDBridgeUITests
+
+  OBDBridgeTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: OBDBridgeTests
+    dependencies:
+      - target: OBDBridge
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.anton.obdbridge.tests
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGNING_ALLOWED: NO
+
+  OBDBridgeUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: OBDBridgeUITests
+    dependencies:
+      - target: OBDBridge
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.anton.obdbridge.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGNING_ALLOWED: NO
