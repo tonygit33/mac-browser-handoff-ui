@@ -143,12 +143,16 @@ jobs:
           test -f "$APP_PATH/mazda-5-cr-2007.diagnostic-pack.json"
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_PATH/Info.plist")" = "0.4.3"
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$APP_PATH/Info.plist")" = "9"
-          strings "$APP_PATH/OBDBridge" | grep -F "rules-on-device"
-          strings "$APP_PATH/OBDBridge" | grep -F "discardingUntilPrompt"
+          grep -Fq 'rules-on-device' OBDBridge/LocalOBDAnalysisEngine.swift
+          grep -Fq 'discardingUntilPrompt' OBDBridge/AccessoryBridge.swift
+          grep -Fq 'ReadOnlyCommandPolicy' OBDBridge/AccessoryBridge.swift
+          file "$APP_PATH/OBDBridge" | grep -Fq 'Mach-O 64-bit executable arm64'
+          test "$(find "$APP_PATH" -name '*.dylib' -o -name '*.framework' | wc -l | tr -d ' ')" = "0"
           rm -rf Payload OBDBridge-0.4.3-QA.ipa
           mkdir Payload
           cp -R "$APP_PATH" Payload/
           /usr/bin/ditto -c -k --sequesterRsrc --keepParent Payload OBDBridge-0.4.3-QA.ipa
+          unzip -t OBDBridge-0.4.3-QA.ipa
           shasum -a 256 OBDBridge-0.4.3-QA.ipa | tee qa-artifacts/ipa-sha256.txt
 
       - name: Upload QA evidence
