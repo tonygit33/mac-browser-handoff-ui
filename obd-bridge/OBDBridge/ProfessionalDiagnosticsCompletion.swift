@@ -39,7 +39,7 @@ final class OBDAnalysisClient: ObservableObject {
                   let url = URL(string: configured) {
             self.endpoint = url
         } else {
-            self.endpoint = URL(string: "https://project-2yxp4.vercel.app/api/obd-analyze")!
+            self.endpoint = URL(string: "https://project-2yxp4.vercel.app/api/bridge-realtime?command=obd-analyze")!
         }
     }
 

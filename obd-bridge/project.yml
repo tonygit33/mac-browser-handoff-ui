@@ -23,7 +23,7 @@ targets:
         CFBundleVersion: "10"
         UIFileSharingEnabled: true
         LSSupportsOpeningDocumentsInPlace: true
-        OBDAnalysisEndpoint: https://project-2yxp4.vercel.app/api/obd-analyze
+        OBDAnalysisEndpoint: https://project-2yxp4.vercel.app/api/bridge-realtime?command=obd-analyze
         OBDAnalysisClientToken: aaca489807595ab9179a2a5ec001ff089c8e9b651459e8ada0e81c35fc25dc9d
         NSBluetoothAlwaysUsageDescription: OBD Bridge uses Bluetooth to communicate with your paired OBDLink MX+ adapter.
         UISupportedExternalAccessoryProtocols:

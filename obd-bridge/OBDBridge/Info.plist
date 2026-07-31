@@ -27,7 +27,7 @@
 	<key>LSSupportsOpeningDocumentsInPlace</key>
 	<true/>
 	<key>OBDAnalysisEndpoint</key>
-	<string>https://project-2yxp4.vercel.app/api/obd-analyze</string>
+	<string>https://project-2yxp4.vercel.app/api/bridge-realtime?command=obd-analyze</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>OBD Bridge uses Bluetooth to communicate with your paired OBDLink MX+ adapter.</string>
 	<key>UISupportedExternalAccessoryProtocols</key>
