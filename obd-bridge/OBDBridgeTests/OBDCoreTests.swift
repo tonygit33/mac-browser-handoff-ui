@@ -38,4 +38,57 @@ final class OBDCoreTests: XCTestCase {
         XCTAssertTrue(ids.contains(0x20))
         XCTAssertEqual(ids.count, 2)
     }
+
+    func testFreezeFrameRemovesFrameByteBeforePIDFormula() throws {
+        // Mode 02 response: service 42, PID 0C, frame 00, RPM bytes 1A F8.
+        let record = try XCTUnwrap(
+            StructuredDiagnosticDecoder.freezeFrame(
+                command: "020C00",
+                response: "7E8 05 42 0C 00 1A F8\r>"
+            )
+        )
+        XCTAssertEqual(record.frameNumber, 0)
+        let sample = try XCTUnwrap(record.samples.first)
+        XCTAssertEqual(sample.numericValue, 1726, accuracy: 0.001)
+        XCTAssertEqual(sample.unit, "rpm")
+        XCTAssertEqual(sample.rawHex, "1AF8")
+    }
+
+    func testFreezeFrameDTCDecode() throws {
+        let record = try XCTUnwrap(
+            StructuredDiagnosticDecoder.freezeFrame(
+                command: "020200",
+                response: "42 02 00 21 88\r>"
+            )
+        )
+        XCTAssertEqual(record.dtc, "P2188")
+    }
+
+    func testUnambiguousLegacyMode06Record() throws {
+        let records = StructuredDiagnosticDecoder.mode06(
+            command: "0601",
+            response: "46 01 80 00 10 00 00 00 20\r>"
+        )
+        XCTAssertEqual(records.count, 1)
+        let record = try XCTUnwrap(records.first)
+        XCTAssertEqual(record.testID, "80")
+        XCTAssertEqual(record.value, 16)
+        XCTAssertEqual(record.minimum, 0)
+        XCTAssertEqual(record.maximum, 32)
+        XCTAssertEqual(record.passed, true)
+    }
+
+    func testAmbiguousMode06LayoutStaysRawOnly() throws {
+        // Eight bytes after MID may include a component ID. Do not invent value/limits.
+        let records = StructuredDiagnosticDecoder.mode06(
+            command: "0601",
+            response: "46 01 80 01 00 10 00 00 00 20\r>"
+        )
+        XCTAssertEqual(records.count, 1)
+        let record = try XCTUnwrap(records.first)
+        XCTAssertNil(record.testID)
+        XCTAssertNil(record.value)
+        XCTAssertNil(record.passed)
+        XCTAssertFalse(record.rawHex.isEmpty)
+    }
 }
