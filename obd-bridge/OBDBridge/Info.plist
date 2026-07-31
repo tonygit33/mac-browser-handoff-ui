@@ -17,15 +17,17 @@
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>0.3.1</string>
+    <string>0.4.0</string>
     <key>CFBundleVersion</key>
-    <string>5</string>
+    <string>6</string>
     <key>LSRequiresIPhoneOS</key>
     <true/>
     <key>UIFileSharingEnabled</key>
     <true/>
     <key>LSSupportsOpeningDocumentsInPlace</key>
     <true/>
+    <key>OBDAnalysisEndpoint</key>
+    <string>https://project-2yxp4-kache.vercel.app/api/obd-analyze</string>
     <key>NSBluetoothAlwaysUsageDescription</key>
     <string>OBD Bridge uses Bluetooth to communicate with your paired OBDLink MX+ adapter.</string>
     <key>UISupportedExternalAccessoryProtocols</key>

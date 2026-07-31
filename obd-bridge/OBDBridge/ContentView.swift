@@ -21,6 +21,7 @@ struct ContentView: View {
                     if bridge.isLogging || bridge.isBusy {
                         progressCard
                     }
+                    ProfessionalRuntimeCard(runtime: bridge.professional)
                     if !bridge.dtcs.isEmpty {
                         dtcCard
                     }
@@ -342,6 +343,66 @@ struct ContentView: View {
         }
         .padding()
         .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 16))
+    }
+}
+
+
+struct ProfessionalRuntimeCard: View {
+    @ObservedObject var runtime: ProfessionalDiagnosticsRuntime
+    @ObservedObject private var analysis: OBDAnalysisClient
+
+    init(runtime: ProfessionalDiagnosticsRuntime) {
+        self.runtime = runtime
+        self.analysis = runtime.analysisClient
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 9) {
+            HStack {
+                Label("Professional diagnostics", systemImage: "brain.head.profile")
+                    .font(.headline)
+                Spacer()
+                Text("\(runtime.decodedSignalCount) signals")
+                    .font(.caption.monospaced())
+                    .foregroundStyle(.secondary)
+            }
+            Text(runtime.vehicleDisplayName)
+                .font(.subheadline.weight(.semibold))
+            Text(runtime.status)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            if !runtime.selectedPackIDs.isEmpty {
+                Text("Packs: \(runtime.selectedPackIDs.joined(separator: ", "))")
+                    .font(.caption2.monospaced())
+                    .foregroundStyle(.secondary)
+            }
+            if !analysis.summary.isEmpty {
+                Text(analysis.summary)
+                    .font(.subheadline.weight(.semibold))
+            }
+            if let error = analysis.lastError {
+                Text(error)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            } else {
+                Text(analysis.status)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Button {
+                runtime.analyzeLastSnapshot()
+            } label: {
+                Label(analysis.isAnalyzing ? "Analyzing…" : "Analyze latest AI snapshot", systemImage: "sparkles")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(runtime.lastSnapshotURL == nil || analysis.isAnalyzing)
+            Text("The service analyzes evidence only. It cannot clear codes, actuate components, code modules or write to an ECU.")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+        .padding()
+        .background(Color.indigo.opacity(0.10), in: RoundedRectangle(cornerRadius: 16))
     }
 }
 
