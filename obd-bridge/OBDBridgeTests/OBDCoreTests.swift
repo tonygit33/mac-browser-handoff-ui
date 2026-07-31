@@ -22,6 +22,21 @@ final class OBDCoreTests: XCTestCase {
         XCTAssertEqual(decoded.unit, "rpm")
     }
 
+    func testCompactPayloadDecodeWithoutSpaces() throws {
+        let decoded = try XCTUnwrap(OBDDecoder.decodeMode01(pid: 0x0C, response: "410C1AF8\r>"))
+        XCTAssertEqual(decoded.numericValue, 1726, accuracy: 0.001)
+    }
+
+    func testCompact11BitHeaderDecode() throws {
+        let decoded = try XCTUnwrap(OBDDecoder.decodeMode01(pid: 0x0C, response: "7E804410C1AF8\r>"))
+        XCTAssertEqual(decoded.numericValue, 1726, accuracy: 0.001)
+    }
+
+    func test29BitHeaderDecode() throws {
+        let decoded = try XCTUnwrap(OBDDecoder.decodeMode01(pid: 0x0C, response: "18DAF110 04 41 0C 1A F8\r>"))
+        XCTAssertEqual(decoded.numericValue, 1726, accuracy: 0.001)
+    }
+
     func testFuelTrimDecode() throws {
         let decoded = try XCTUnwrap(OBDDecoder.decodeMode01(pid: 0x06, response: "41 06 70\r>"))
         XCTAssertEqual(decoded.numericValue, -12.5, accuracy: 0.001)
@@ -40,7 +55,6 @@ final class OBDCoreTests: XCTestCase {
     }
 
     func testFreezeFrameRemovesFrameByteBeforePIDFormula() throws {
-        // Mode 02 response: service 42, PID 0C, frame 00, RPM bytes 1A F8.
         let record = try XCTUnwrap(
             StructuredDiagnosticDecoder.freezeFrame(
                 command: "020C00",
@@ -79,7 +93,6 @@ final class OBDCoreTests: XCTestCase {
     }
 
     func testAmbiguousMode06LayoutStaysRawOnly() throws {
-        // Eight bytes after MID may include a component ID. Do not invent value/limits.
         let records = StructuredDiagnosticDecoder.mode06(
             command: "0601",
             response: "46 01 80 01 00 10 00 00 00 20\r>"
