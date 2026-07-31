@@ -181,7 +181,7 @@ struct ContentView: View {
     private var connectionButton: some View {
         Button {
             if bridge.isConnected {
-                if bridge.isLogging || bridge.isBusy {
+                if bridge.isLogging {
                     showDisconnectConfirmation = true
                 } else {
                     bridge.close()
@@ -251,23 +251,55 @@ struct ContentView: View {
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
 
+            HStack {
+                Label(selectedPreset.durationDescription, systemImage: "clock")
+                Spacer()
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Test steps")
+                    .font(.subheadline.weight(.semibold))
+                ForEach(Array(selectedPreset.guidedSteps.enumerated()), id: \.offset) { index, step in
+                    HStack(alignment: .top, spacing: 8) {
+                        Text("\(index + 1)")
+                            .font(.caption.monospaced().weight(.bold))
+                            .frame(width: 24, height: 24)
+                            .background(Color.accentColor.opacity(0.12), in: Circle())
+                        Text(step)
+                            .font(.caption)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+            .padding(10)
+            .background(Color.secondary.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
+
+            if let notice = selectedPreset.safetyNotice {
+                Label(notice, systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
             Button {
-                if bridge.isLogging || bridge.isBusy {
+                if bridge.isLogging {
                     bridge.stopLogging()
                 } else {
                     bridge.startContinuousLogging(preset: selectedPreset, fuelMode: fuelMode)
                 }
             } label: {
                 Label(
-                    bridge.isLogging || bridge.isBusy ? "Stop & save" : "Start logging",
-                    systemImage: bridge.isLogging || bridge.isBusy ? "stop.circle.fill" : "record.circle"
+                    bridge.isLogging ? "Stop & save" : "Start logging",
+                    systemImage: bridge.isLogging ? "stop.circle.fill" : "record.circle"
                 )
                 .frame(maxWidth: .infinity, minHeight: 48)
             }
             .buttonStyle(.borderedProminent)
-            .tint(bridge.isLogging || bridge.isBusy ? .red : .accentColor)
-            .disabled((!bridge.isConnected || bridge.isConnecting) && !(bridge.isLogging || bridge.isBusy))
-            .accessibilityIdentifier(bridge.isLogging || bridge.isBusy ? "Stop and save" : "Start logging")
+            .tint(bridge.isLogging ? .red : .accentColor)
+            .disabled(!bridge.isLogging && (!bridge.isConnected || bridge.isConnecting || bridge.isBusy))
+            .accessibilityIdentifier(bridge.isLogging ? "Stop and save" : "Start logging")
 
             if fuelMode == .unknown {
                 Label("Select Gasoline or LPG before recording when you know which fuel is active.", systemImage: "info.circle")
