@@ -390,6 +390,7 @@ final class AccessoryBridge: NSObject, ObservableObject, StreamDelegate {
             return
         }
         recorder.marker(text)
+        professional.addMarker(text)
         appendLog("MARKER: \(text)")
     }
 
