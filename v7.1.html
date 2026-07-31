@@ -71,11 +71,12 @@ async function acceptOffer(message){
   peer.ontrack=event=>{if(pc!==peer)return;video.srcObject=event.streams[0];empty.style.display='none';video.play().catch(()=>{});maybeReady()||status('P2P video',true)};
   peer.ondatachannel=event=>{if(pc===peer)bindData(event.channel)};
   peer.onicecandidate=e=>{if(pc===peer&&e.candidate)publish(topicHost,{type:'webrtc.ice',viewerId,candidate:e.candidate.toJSON()})};
-  peer.onconnectionstatechange=()=>{if(pc!==peer)return;const s=peer.connectionState;if(s==='connected')maybeReady();if(['failed','closed'].includes(s)&&!closed){closePeer();status('P2P reconnecting');sendReady()}};
+  peer.onconnectionstatechange=()=>{if(pc!==peer)return;const s=peer.connectionState;if(s==='connected')maybeReady();if(['failed','closed'].includes(s)&&!closed){publish(topicHost,{type:'viewer.reset',viewerId}).catch(()=>{});closePeer();status('P2P reconnecting');setTimeout(sendReady,500)}};
   try{
     await peer.setRemoteDescription(message.sdp);
     for(const c of pendingRemoteIce.splice(0))await addRemoteCandidate(c);
     await peer.setLocalDescription(await peer.createAnswer());
+    await new Promise(resolve=>setTimeout(resolve,500));
     await publish(topicHost,{type:'webrtc.answer',viewerId,sdp:peer.localDescription});
     status('answer sent · gathering ICE',true);
   }catch(error){if(pc===peer)closePeer();status('answer error');console.error(error);sendReady()}
