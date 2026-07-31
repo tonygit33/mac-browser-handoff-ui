@@ -45,6 +45,7 @@ final class ProfessionalDiagnosticsRuntime: ObservableObject {
     private var invalidSamples = 0
     private var timedOutRequests = 0
     private var rawOnlySignals = Set<SignalIdentifierV1>()
+    private var userMarkers: [String] = []
 
     init() {
         do {
@@ -81,6 +82,8 @@ final class ProfessionalDiagnosticsRuntime: ObservableObject {
         invalidSamples = 0
         timedOutRequests = 0
         rawOnlySignals.removeAll()
+        userMarkers.removeAll()
+        userMarkers.append(Self.timestampedMarker("fuel=\(fuelMode.rawValue)"))
         structuredFreezeFrames.removeAll()
         structuredMode06.removeAll()
         lastScanPlan = nil
@@ -93,7 +96,18 @@ final class ProfessionalDiagnosticsRuntime: ObservableObject {
     }
 
     func setFuelMode(_ mode: FuelMode) {
+        guard fuelMode != mode else { return }
         fuelMode = mode
+        addMarker("fuel=\(mode.rawValue)")
+    }
+
+    func addMarker(_ marker: String) {
+        let cleaned = marker.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleaned.isEmpty else { return }
+        userMarkers.append(Self.timestampedMarker(cleaned))
+        if userMarkers.count > 500 {
+            userMarkers.removeFirst(userMarkers.count - 500)
+        }
     }
 
     func markTimeout() {
@@ -237,6 +251,8 @@ final class ProfessionalDiagnosticsRuntime: ObservableObject {
     ) -> URL? {
         guard let directory = sessionDirectory else { return nil }
         closeSamplesFile()
+        let samplesURL = directory.appendingPathComponent("professional-samples.jsonl")
+        let timeSeriesSummary = try? DiagnosticTimeSeriesSummarizer.summarize(samplesURL: samplesURL)
         updateContext(
             vin: vehicleProfile.vin ?? "",
             protocolDescription: protocolDescription,
@@ -309,10 +325,12 @@ final class ProfessionalDiagnosticsRuntime: ObservableObject {
                     startedAt: sessionStartedAt ?? end,
                     endedAt: end,
                     completedPhaseIDs: [],
-                    userMarkers: ["fuel=\(fuelMode.rawValue)", summaryLabel],
+                    userMarkers: userMarkers + [Self.timestampedMarker(summaryLabel)],
                     entryConditionsMet: [],
                     entryConditionsMissing: [],
-                    notes: []
+                    notes: timeSeriesSummary.map {
+                        ["Observed operating regimes: \(Self.observedRegimeIDs($0).joined(separator: ", "))"]
+                    } ?? ["Operating regimes could not be summarized."]
                 )
             ],
             datasets: datasets,
@@ -320,6 +338,7 @@ final class ProfessionalDiagnosticsRuntime: ObservableObject {
             freezeFrames: structuredFreezeFrames,
             mode06Results: structuredMode06,
             latestSamples: latestSamples.values.sorted { $0.signal.description < $1.signal.description },
+            timeSeriesSummary: timeSeriesSummary,
             coverage: SignalCoverageSummaryV1(
                 discoveredCount: capabilitySignals.count,
                 decodedCount: decodedSignals.count,
@@ -340,7 +359,9 @@ final class ProfessionalDiagnosticsRuntime: ObservableObject {
                 clockDiscontinuities: 0,
                 averageLatencyMilliseconds: nil,
                 observedFrequencyBySignal: frequencies,
-                warnings: finalCapability.warnings
+                warnings: finalCapability.warnings + (timeSeriesSummary == nil
+                    ? ["Time-series regime summary could not be generated; analysis is limited to latest values."]
+                    : [])
             ),
             provenance: provenance,
             analysisQuestion: SnapshotAnalysisQuestionV1(
@@ -350,7 +371,11 @@ final class ProfessionalDiagnosticsRuntime: ObservableObject {
                 requestedSystems: [],
                 constraints: ["read-only acquisition", "do not infer meanings for raw-only identifiers"]
             ),
-            privacyNotes: ["VIN may identify the vehicle. Location is not collected by OBD Bridge."]
+            privacyNotes: [
+                "The local session may contain the full VIN; cloud payloads hash it on the iPhone before upload.",
+                "Location is not collected by OBD Bridge.",
+                "The embedded time-series summary contains bounded numeric statistics, not the full raw recording."
+            ]
         )
 
         do {
@@ -364,6 +389,14 @@ final class ProfessionalDiagnosticsRuntime: ObservableObject {
             resetSessionState(keepSnapshot: false)
             return nil
         }
+    }
+
+    private static func timestampedMarker(_ marker: String) -> String {
+        "\(ISO8601DateFormatter().string(from: Date())) | \(marker)"
+    }
+
+    private static func observedRegimeIDs(_ summary: TimeSeriesAnalysisSummaryV1) -> [String] {
+        Array(Set(summary.signals.flatMap { $0.byRegime.map { $0.regime.rawValue } })).sorted()
     }
 
     private func persist(_ sample: DiagnosticSampleV1) {

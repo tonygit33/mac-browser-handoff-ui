@@ -110,6 +110,7 @@ struct AISnapshotManifestV1: Codable, Hashable, Identifiable {
     let freezeFrames: [FreezeFrameRecordV1]
     let mode06Results: [Mode06RecordV1]
     let latestSamples: [DiagnosticSampleV1]
+    let timeSeriesSummary: TimeSeriesAnalysisSummaryV1?
     let coverage: SignalCoverageSummaryV1
     let quality: DataQualitySummaryV1
     let provenance: [DiagnosticSourceProvenance]

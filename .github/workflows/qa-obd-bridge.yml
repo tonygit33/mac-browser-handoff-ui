@@ -1,0 +1,172 @@
+name: OBD Bridge Full QA
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "obd-bridge/**"
+      - ".github/workflows/qa-obd-bridge.yml"
+
+permissions:
+  contents: read
+
+env:
+  OBDB_SAEJ1979_REVISION: d3259214a9e0340c4a6cff9ec5f8ff5953eee6f2
+
+jobs:
+  qa:
+    runs-on: macos-15
+    timeout-minutes: 35
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Toolchain
+        run: |
+          set -euo pipefail
+          sw_vers
+          xcodebuild -version
+          swift --version
+          python3 --version
+
+      - name: Generate pinned SAE catalog
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/obdb-saej1979
+          git clone --filter=blob:none --no-checkout https://github.com/OBDb/SAEJ1979.git /tmp/obdb-saej1979
+          git -C /tmp/obdb-saej1979 checkout "$OBDB_SAEJ1979_REVISION"
+          python3 obd-bridge/tools/sync_obdb_catalog.py \
+            /tmp/obdb-saej1979 \
+            obd-bridge/Resources/VehicleDataPacks/core-sae-j1979-generated.diagnostic-pack.json \
+            --revision "$OBDB_SAEJ1979_REVISION"
+
+      - name: Validate data packs and static release rules
+        run: |
+          set -euo pipefail
+          python3 -m venv /tmp/obd-qa-venv
+          /tmp/obd-qa-venv/bin/python -m pip install --disable-pip-version-check "jsonschema[format]>=4.23,<5"
+          /tmp/obd-qa-venv/bin/python -m py_compile obd-bridge/tools/*.py
+          /tmp/obd-qa-venv/bin/python obd-bridge/tools/validate_vehicle_data_packs.py
+          /tmp/obd-qa-venv/bin/python obd-bridge/tools/qa_static_checks.py
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        working-directory: obd-bridge
+        run: xcodegen generate
+
+      - name: Create simulator
+        id: simulator
+        run: |
+          set -euo pipefail
+          RUNTIME=$(xcrun simctl list runtimes available -j | python3 -c 'import json,sys; r=[x for x in json.load(sys.stdin)["runtimes"] if x["platform"]=="iOS" and x.get("isAvailable",True)]; print(sorted(r,key=lambda x:x["version"])[-1]["identifier"])')
+          DEVICE_TYPE=$(xcrun simctl list devicetypes -j | python3 -c 'import json,sys; rows=json.load(sys.stdin)["devicetypes"]; names=["iPhone 16 Pro","iPhone 15 Pro","iPhone 14 Pro","iPhone SE (3rd generation)"]; print(next(x["identifier"] for n in names for x in rows if x["name"]==n))')
+          UDID=$(xcrun simctl create "OBD Bridge QA" "$DEVICE_TYPE" "$RUNTIME")
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+
+      - name: Unit and UI tests
+        working-directory: obd-bridge
+        run: |
+          set -euo pipefail
+          xcodebuild test \
+            -project OBDBridge.xcodeproj \
+            -scheme OBDBridge \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination "id=${{ steps.simulator.outputs.udid }}" \
+            -derivedDataPath build-qa \
+            -resultBundlePath QAResults.xcresult \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Export UI test screenshots
+        if: always()
+        working-directory: obd-bridge
+        run: |
+          set +e
+          mkdir -p qa-artifacts/xcresult-attachments
+          xcrun xcresulttool export attachments \
+            --path QAResults.xcresult \
+            --output-path qa-artifacts/xcresult-attachments
+          find qa-artifacts -type f -maxdepth 3 -print
+
+      - name: Capture light, dark and large-text launch states
+        working-directory: obd-bridge
+        run: |
+          set -euo pipefail
+          UDID='${{ steps.simulator.outputs.udid }}'
+          APP_PATH=$(find build-qa/Build/Products/Debug-iphonesimulator -maxdepth 1 -name 'OBDBridge.app' -print -quit)
+          test -n "$APP_PATH"
+          mkdir -p qa-artifacts
+          xcrun simctl install "$UDID" "$APP_PATH"
+          xcrun simctl terminate "$UDID" com.anton.obdbridge 2>/dev/null || true
+          xcrun simctl ui "$UDID" appearance light
+          xcrun simctl launch "$UDID" com.anton.obdbridge --ui-testing-demo
+          sleep 3
+          xcrun simctl io "$UDID" screenshot qa-artifacts/launch-light.png
+          xcrun simctl terminate "$UDID" com.anton.obdbridge
+          xcrun simctl ui "$UDID" appearance dark
+          xcrun simctl launch "$UDID" com.anton.obdbridge --ui-testing-demo
+          sleep 3
+          xcrun simctl io "$UDID" screenshot qa-artifacts/launch-dark.png
+          xcrun simctl terminate "$UDID" com.anton.obdbridge
+          xcrun simctl ui "$UDID" content_size accessibility-extra-large || true
+          xcrun simctl launch "$UDID" com.anton.obdbridge --ui-testing-demo
+          sleep 3
+          xcrun simctl io "$UDID" screenshot qa-artifacts/launch-large-text.png
+
+      - name: Build release device application
+        working-directory: obd-bridge
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -project OBDBridge.xcodeproj \
+            -scheme OBDBridge \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build-release \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+
+      - name: Verify and package QA release IPA
+        working-directory: obd-bridge
+        run: |
+          set -euo pipefail
+          APP_PATH=$(find build-release/Build/Products/Release-iphoneos -maxdepth 1 -name '*.app' -print -quit)
+          test -n "$APP_PATH"
+          test -f "$APP_PATH/core-sae-j1979-generated.diagnostic-pack.json"
+          test -f "$APP_PATH/core-sae-j1979.diagnostic-pack.json"
+          test -f "$APP_PATH/mazda-5-cr-2007.diagnostic-pack.json"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_PATH/Info.plist")" = "0.4.3"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$APP_PATH/Info.plist")" = "9"
+          grep -Fq 'rules-on-device' OBDBridge/LocalOBDAnalysisEngine.swift
+          grep -Fq 'discardingUntilPrompt' OBDBridge/AccessoryBridge.swift
+          grep -Fq 'ReadOnlyCommandPolicy' OBDBridge/AccessoryBridge.swift
+          file "$APP_PATH/OBDBridge" | grep -Fq 'Mach-O 64-bit executable arm64'
+          test "$(find "$APP_PATH" -name '*.dylib' -o -name '*.framework' | wc -l | tr -d ' ')" = "0"
+          rm -rf Payload OBDBridge-0.4.3-QA.ipa
+          mkdir Payload
+          cp -R "$APP_PATH" Payload/
+          /usr/bin/ditto -c -k --sequesterRsrc --keepParent Payload OBDBridge-0.4.3-QA.ipa
+          unzip -t OBDBridge-0.4.3-QA.ipa
+          shasum -a 256 OBDBridge-0.4.3-QA.ipa | tee qa-artifacts/ipa-sha256.txt
+
+      - name: Upload QA evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: OBDBridge-0.4.3-full-qa
+          path: |
+            obd-bridge/QAResults.xcresult
+            obd-bridge/qa-artifacts
+            obd-bridge/OBDBridge-0.4.3-QA.ipa
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Shutdown simulator
+        if: always()
+        run: xcrun simctl shutdown '${{ steps.simulator.outputs.udid }}' 2>/dev/null || true

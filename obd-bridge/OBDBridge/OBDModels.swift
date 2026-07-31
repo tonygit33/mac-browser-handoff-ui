@@ -108,25 +108,38 @@ struct DecodedPID {
 enum OBDDecoder {
     static func byteSequences(from response: String) -> [[UInt8]] {
         response.split(whereSeparator: \.isNewline).compactMap { line in
-            let tokens = line.uppercased().split { !$0.isHexDigit }
+            let tokenStrings = line.uppercased().split { !$0.isHexDigit }.map(String.init)
             var bytes: [UInt8] = []
-            for tokenSub in tokens {
-                var token = String(tokenSub)
-                if token.count == 3 || token.count == 8 { continue }
-                if token.count > 5, token.count % 2 == 1 {
+
+            for (tokenIndex, rawToken) in tokenStrings.enumerated() {
+                var token = rawToken
+
+                // A separate three-digit first token is an 11-bit CAN header.
+                if tokenIndex == 0, token.count == 3 { continue }
+
+                // A separate eight-digit first token beginning 18/19 is a 29-bit CAN header.
+                // Other eight-digit tokens are valid compact four-byte payloads.
+                if tokenIndex == 0, token.count == 8,
+                   token.hasPrefix("18") || token.hasPrefix("19") {
+                    continue
+                }
+
+                // Compact line with an 11-bit header followed by length/data.
+                if tokenIndex == 0, token.count > 5, !token.count.isMultiple(of: 2) {
                     token = String(token.dropFirst(3))
-                } else if token.count > 12, token.count % 2 == 0, token.hasPrefix("18") || token.hasPrefix("19") {
+                // Compact line with a 29-bit header followed by length/data.
+                } else if tokenIndex == 0, token.count > 12, token.count.isMultiple(of: 2),
+                          token.hasPrefix("18") || token.hasPrefix("19") {
                     token = String(token.dropFirst(8))
                 }
-                if token.count == 2, let byte = UInt8(token, radix: 16) {
+
+                guard token.count.isMultiple(of: 2) else { continue }
+                var index = token.startIndex
+                while index < token.endIndex {
+                    let next = token.index(index, offsetBy: 2)
+                    guard let byte = UInt8(token[index..<next], radix: 16) else { break }
                     bytes.append(byte)
-                } else if token.count >= 4, token.count % 2 == 0 {
-                    var index = token.startIndex
-                    while index < token.endIndex {
-                        let next = token.index(index, offsetBy: 2)
-                        if let byte = UInt8(token[index..<next], radix: 16) { bytes.append(byte) }
-                        index = next
-                    }
+                    index = next
                 }
             }
             return bytes.isEmpty ? nil : bytes
