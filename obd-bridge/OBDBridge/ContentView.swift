@@ -389,11 +389,20 @@ struct ContentView: View {
             }
 
             if visibleLatestValues.isEmpty {
-                ContentUnavailableView(
-                    "No live values yet",
-                    systemImage: "waveform",
-                    description: Text("Connect the adapter and start a guided recording or full snapshot.")
-                )
+                VStack(spacing: 8) {
+                    Image(systemName: "waveform")
+                        .font(.largeTitle)
+                        .foregroundStyle(.secondary)
+                    Text("No live values yet")
+                        .font(.headline)
+                    Text("Connect the adapter and start a guided recording or full snapshot.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 24)
+                .accessibilityElement(children: .combine)
             } else {
                 ForEach(visibleLatestValues, id: \.0) { key, value in
                     LabeledContent {
