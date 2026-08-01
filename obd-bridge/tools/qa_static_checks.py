@@ -20,13 +20,23 @@ with PLIST.open("rb") as handle:
 
 version = plist.get("CFBundleShortVersionString")
 build = plist.get("CFBundleVersion")
-for expected in [f'CFBundleShortVersionString: "{version}"', f'CFBundleVersion: "{build}"', f'MARKETING_VERSION: "{version}"', f'CURRENT_PROJECT_VERSION: "{build}"']:
+for expected in [
+    f'CFBundleShortVersionString: "{version}"',
+    f'CFBundleVersion: "{build}"',
+    f'MARKETING_VERSION: "{version}"',
+    f'CURRENT_PROJECT_VERSION: "{build}"',
+]:
     if expected not in project_text:
         errors.append(f"project.yml is inconsistent with Info.plist: missing {expected}")
 
-endpoint = plist.get("OBDAnalysisEndpoint", "")
-if not isinstance(endpoint, str) or not endpoint.startswith("https://"):
-    errors.append("OBDAnalysisEndpoint must be HTTPS")
+for key in ["OBDAnalysisEndpoint", "OBDWebAppURL"]:
+    endpoint = plist.get(key, "")
+    if not isinstance(endpoint, str) or not endpoint.startswith("https://"):
+        errors.append(f"{key} must be HTTPS")
+
+allowed_hosts = plist.get("OBDWebAllowedHosts", [])
+if not isinstance(allowed_hosts, list) or not allowed_hosts:
+    errors.append("OBDWebAllowedHosts must contain at least one host")
 
 protocols = plist.get("UISupportedExternalAccessoryProtocols", [])
 if "com.obdlink" not in protocols:
@@ -38,22 +48,42 @@ for forbidden in [r"\btry!\b", r"\bas!\b", r"\bfatalError\s*\("]:
     if re.search(forbidden, combined):
         errors.append(f"forbidden Swift construct detected: {forbidden}")
 
-if "ReadOnlyCommandPolicy.isAllowed" not in (APP / "AccessoryBridge.swift").read_text():
+accessory = (APP / "AccessoryBridge.swift").read_text()
+if "ReadOnlyCommandPolicy.isAllowed" not in accessory:
     errors.append("AccessoryBridge does not use the centralized read-only policy")
-
-if "targetFrequencyHz" not in (APP / "AccessoryBridge.swift").read_text():
+if "targetFrequencyHz" not in accessory:
     errors.append("transport does not consume planner targetFrequencyHz")
-
-if "discardingUntilPrompt" not in (APP / "AccessoryBridge.swift").read_text():
+if "discardingUntilPrompt" not in accessory:
     errors.append("prompt recovery guard is missing")
 
 content = (APP / "ContentView.swift").read_text()
-for required in ["TabView", "Advanced tools", "Privacy before sharing", "Read-only safety", "LazyVGrid", "accessibilityLabel"]:
-    if required not in content:
-        errors.append(f"UX requirement missing from ContentView: {required}")
+web_bridge_path = APP / "NativeWebBridge.swift"
+if "WebShellView" not in content:
+    errors.append("ContentView is not the thin web-shell host")
+if not web_bridge_path.exists():
+    errors.append("NativeWebBridge.swift is missing")
+else:
+    web_bridge = web_bridge_path.read_text()
+    for required in [
+        "WKWebView", "obdBridge", "command.send", "command.batch", "files.readChunk",
+        "OBDWebAllowedHosts", "isMainFrame", "ReadOnlyCommandPolicy.isAllowed",
+    ]:
+        if required not in web_bridge:
+            errors.append(f"web bridge requirement missing: {required}")
 
-if "bridge.vin)" in content or 'Text(bridge.vin)' in content:
-    errors.append("full VIN is rendered directly in the UI")
+fallback = ROOT / "Resources" / "obd-shell-fallback.html"
+if not fallback.exists():
+    errors.append("bundled offline web-shell fallback is missing")
+else:
+    fallback_text = fallback.read_text()
+    for required in ["OBDNative", "Connect MX+", "command.send", "scan.start"]:
+        if required not in fallback_text:
+            errors.append(f"offline fallback requirement missing: {required}")
+
+policy = (APP / "ReadOnlyCommandPolicy.swift").read_text()
+for blocked in ["STPX", "2E", "34", "ATPP"]:
+    if blocked not in policy:
+        errors.append(f"native block policy does not mention {blocked}")
 
 for directory in [ROOT / "OBDBridgeTests", ROOT / "OBDBridgeUITests"]:
     if not directory.exists() or not any(directory.glob("*.swift")):
@@ -71,7 +101,7 @@ for pack_path in sorted((ROOT / "Resources" / "VehicleDataPacks").glob("*.json")
 notes.append(f"version={version} build={build}")
 notes.append(f"swift_files={len(swift_files)}")
 notes.append(f"diagnostic_packs={len(pack_ids)}")
-notes.append("manual vehicle-write services remain blocked")
+notes.append("native web-shell contract and read-only boundary present")
 
 print("STATIC QA")
 for note in notes:
