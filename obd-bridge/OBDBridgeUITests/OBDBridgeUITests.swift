@@ -5,37 +5,30 @@ final class OBDBridgeUITests: XCTestCase {
         continueAfterFailure = false
     }
 
-    func testPrimaryDiagnosticNavigation() throws {
+    func testWebShellLoadsOfflineContract() throws {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing-demo"]
         app.launch()
 
-        XCTAssertTrue(app.tabBars.buttons["Diagnose"].waitForExistence(timeout: 8))
-        XCTAssertTrue(app.buttons["Start logging"].exists)
-        XCTAssertTrue(app.staticTexts["P2188 / fuel trims"].exists)
-        attachScreenshot(named: "01-diagnose")
-
-        app.tabBars.buttons["Live Data"].tap()
-        XCTAssertTrue(app.staticTexts["Latest decoded values"].waitForExistence(timeout: 3))
-        XCTAssertTrue(app.staticTexts["Engine RPM"].exists)
-        attachScreenshot(named: "02-live-data")
-
-        app.tabBars.buttons["Files"].tap()
-        XCTAssertTrue(app.staticTexts["Saved session"].waitForExistence(timeout: 3))
-        XCTAssertTrue(app.staticTexts["Read-only safety"].exists)
-        attachScreenshot(named: "03-files")
+        let shell = app.webViews["OBD Web Shell"]
+        XCTAssertTrue(shell.waitForExistence(timeout: 10))
+        XCTAssertTrue(shell.staticTexts["OBD Bridge"].waitForExistence(timeout: 5))
+        XCTAssertTrue(shell.buttons["Connect MX+"].exists)
+        XCTAssertTrue(shell.buttons["Full snapshot"].exists)
+        attachScreenshot(named: "01-web-shell")
     }
 
-    func testAdvancedToolsAreCollapsedByDefault() throws {
+    func testWebShellExposesScrollableDiagnosticsControls() throws {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing-demo"]
         app.launch()
-        app.tabBars.buttons["Live Data"].tap()
 
-        XCTAssertFalse(app.textFields["Read-only command"].exists)
-        app.buttons["Advanced tools"].tap()
-        XCTAssertTrue(app.textFields["Read-only command"].waitForExistence(timeout: 3))
-        attachScreenshot(named: "04-advanced-tools")
+        let shell = app.webViews["OBD Web Shell"]
+        XCTAssertTrue(shell.waitForExistence(timeout: 10))
+        let send = shell.buttons["Send"]
+        XCTAssertTrue(send.waitForExistence(timeout: 5))
+        XCTAssertTrue(shell.textFields["Read-only command"].exists)
+        attachScreenshot(named: "02-web-shell-terminal")
     }
 
     private func attachScreenshot(named name: String) {
