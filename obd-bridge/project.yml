@@ -19,11 +19,16 @@ targets:
       path: OBDBridge/Info.plist
       properties:
         CFBundleDisplayName: OBD Bridge
-        CFBundleShortVersionString: "0.4.3"
-        CFBundleVersion: "9"
+        CFBundleShortVersionString: "0.5.0"
+        CFBundleVersion: "11"
         UIFileSharingEnabled: true
         LSSupportsOpeningDocumentsInPlace: true
-        OBDAnalysisEndpoint: https://project-2yxp4-kache.vercel.app/api/bridge-realtime?command=obd-analyze
+        OBDWebAppURL: https://project-2yxp4.vercel.app/obd-shell.html
+        OBDWebAllowedHosts:
+          - project-2yxp4.vercel.app
+        OBDWebBridgeVersion: "1.0"
+        OBDAnalysisEndpoint: https://project-2yxp4.vercel.app/api/bridge-realtime?command=obd-analyze
+        OBDAnalysisClientToken: aaca489807595ab9179a2a5ec001ff089c8e9b651459e8ada0e81c35fc25dc9d
         NSBluetoothAlwaysUsageDescription: OBD Bridge uses Bluetooth to communicate with your paired OBDLink MX+ adapter.
         UISupportedExternalAccessoryProtocols:
           - com.obdlink
@@ -36,8 +41,8 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.anton.obdbridge
         PRODUCT_NAME: OBDBridge
-        MARKETING_VERSION: "0.4.3"
-        CURRENT_PROJECT_VERSION: "9"
+        MARKETING_VERSION: "0.5.0"
+        CURRENT_PROJECT_VERSION: "11"
         INFOPLIST_FILE: OBDBridge/Info.plist
         TARGETED_DEVICE_FAMILY: "1"
         CODE_SIGN_STYLE: Automatic

@@ -29,15 +29,17 @@ final class OBDAnalysisClient: ObservableObject {
     @Published private(set) var lastError: String?
 
     private let endpoint: URL
+    private let clientToken: String?
 
-    init(endpoint: URL? = nil) {
+    init(endpoint: URL? = nil, clientToken: String? = nil) {
+        self.clientToken = clientToken ?? (Bundle.main.object(forInfoDictionaryKey: "OBDAnalysisClientToken") as? String)
         if let endpoint {
             self.endpoint = endpoint
         } else if let configured = Bundle.main.object(forInfoDictionaryKey: "OBDAnalysisEndpoint") as? String,
                   let url = URL(string: configured) {
             self.endpoint = url
         } else {
-            self.endpoint = URL(string: "https://project-2yxp4-kache.vercel.app/api/bridge-realtime?command=obd-analyze")!
+            self.endpoint = URL(string: "https://project-2yxp4.vercel.app/api/bridge-realtime?command=obd-analyze")!
         }
     }
 
@@ -68,7 +70,10 @@ final class OBDAnalysisClient: ObservableObject {
                 request.httpMethod = "POST"
                 request.timeoutInterval = 90
                 request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                request.setValue("OBDBridge-iOS/0.4.3", forHTTPHeaderField: "User-Agent")
+                request.setValue("OBDBridge-iOS/0.4.4", forHTTPHeaderField: "User-Agent")
+                if let clientToken, !clientToken.isEmpty {
+                    request.setValue(clientToken, forHTTPHeaderField: "X-OBD-Analysis-Token")
+                }
                 request.httpBody = cloudPayload
 
                 let (data, response) = try await URLSession.shared.data(for: request)

@@ -1,0 +1,9 @@
+{
+  "bridgeVersion": "1.0",
+  "transport": "ExternalAccessory/com.obdlink",
+  "adapterFamily": "OBDLink MX+ / STN2256",
+  "webEntryPoint": "https://project-2yxp4.vercel.app/obd-shell.html",
+  "readOnlyServices": ["01", "02", "03", "06", "07", "09", "0A", "19", "22"],
+  "nativeEvents": ["native-ready", "state", "log", "log-reset"],
+  "nativeSafety": true
+}
