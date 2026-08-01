@@ -1,0 +1,38 @@
+name: Verify OBD Pages Host
+
+on:
+  pull_request:
+    paths:
+      - "obd-bridge/OBDBridge/Info.plist"
+      - "obd-bridge/project.yml"
+      - "obd-bridge/Resources/obd-web-*.json"
+      - "obd-bridge/Resources/obd-web-*.txt"
+      - ".github/workflows/verify-obd-pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Wait for Pages propagation and verify health
+        run: |
+          set -euo pipefail
+          BASE='https://tonygit33.github.io/mac-browser-handoff-ui'
+          success=0
+          for attempt in $(seq 1 30); do
+            if curl -fsS --max-time 10 "$BASE/obd-shell-health.json" -o /tmp/health.json \
+              && grep -Fq '"ok":true' /tmp/health.json; then
+              success=1
+              break
+            fi
+            sleep 10
+          done
+          test "$success" = 1
+          curl -fsS --max-time 20 "$BASE/obd-shell.html" -o /tmp/obd-shell.html
+          grep -Fq 'window.OBDNative' /tmp/obd-shell.html
+          grep -Fq 'Connect MX+' /tmp/obd-shell.html
+          echo 'GitHub Pages OBD web shell is publicly reachable.'
