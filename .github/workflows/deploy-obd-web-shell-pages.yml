@@ -1,0 +1,58 @@
+name: Deploy OBD Web Shell Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "obd-bridge/Resources/obd-shell-fallback.html"
+      - ".github/workflows/deploy-obd-web-shell-pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Assemble static web shell
+        run: |
+          set -euo pipefail
+          rm -rf _site
+          mkdir -p _site
+          cp obd-bridge/Resources/obd-shell-fallback.html _site/obd-shell.html
+          cp obd-bridge/Resources/obd-shell-fallback.html _site/index.html
+          cat > _site/obd-shell-health.json <<'JSON'
+          {"ok":true,"surface":"obd-web-shell-pages","bridge":"1.0"}
+          JSON
+          cat > _site/obd-shell-manifest.json <<'JSON'
+          {"name":"OBD Web Shell","version":"1.0.0","nativeBridge":"1.0","entrypoint":"/mac-browser-handoff-ui/obd-shell.html"}
+          JSON
+          test -s _site/obd-shell.html
+          grep -Fq 'window.OBDNative' _site/obd-shell.html
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
