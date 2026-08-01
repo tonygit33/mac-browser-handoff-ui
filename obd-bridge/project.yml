@@ -23,8 +23,9 @@ targets:
         CFBundleVersion: "11"
         UIFileSharingEnabled: true
         LSSupportsOpeningDocumentsInPlace: true
-        OBDWebAppURL: https://project-2yxp4.vercel.app/obd-shell.html
+        OBDWebAppURL: https://tonygit33.github.io/mac-browser-handoff-ui/obd-shell.html
         OBDWebAllowedHosts:
+          - tonygit33.github.io
           - project-2yxp4.vercel.app
         OBDWebBridgeVersion: "1.0"
         OBDAnalysisEndpoint: https://project-2yxp4.vercel.app/api/bridge-realtime?command=obd-analyze

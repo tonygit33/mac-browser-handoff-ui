@@ -2,7 +2,8 @@
   "bridgeVersion": "1.0",
   "transport": "ExternalAccessory/com.obdlink",
   "adapterFamily": "OBDLink MX+ / STN2256",
-  "webEntryPoint": "https://project-2yxp4.vercel.app/obd-shell.html",
+  "webEntryPoint": "https://tonygit33.github.io/mac-browser-handoff-ui/obd-shell.html",
+  "analysisEndpoint": "https://project-2yxp4.vercel.app/api/bridge-realtime?command=obd-analyze",
   "readOnlyServices": ["01", "02", "03", "06", "07", "09", "0A", "19", "22"],
   "nativeEvents": ["native-ready", "state", "log", "log-reset"],
   "nativeSafety": true

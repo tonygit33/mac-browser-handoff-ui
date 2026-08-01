@@ -14,8 +14,8 @@
     <key>LSRequiresIPhoneOS</key><true/>
     <key>UIFileSharingEnabled</key><true/>
     <key>LSSupportsOpeningDocumentsInPlace</key><true/>
-    <key>OBDWebAppURL</key><string>https://project-2yxp4.vercel.app/obd-shell.html</string>
-    <key>OBDWebAllowedHosts</key><array><string>project-2yxp4.vercel.app</string></array>
+    <key>OBDWebAppURL</key><string>https://tonygit33.github.io/mac-browser-handoff-ui/obd-shell.html</string>
+    <key>OBDWebAllowedHosts</key><array><string>tonygit33.github.io</string><string>project-2yxp4.vercel.app</string></array>
     <key>OBDWebBridgeVersion</key><string>1.0</string>
     <key>OBDAnalysisEndpoint</key><string>https://project-2yxp4.vercel.app/api/bridge-realtime?command=obd-analyze</string>
     <key>OBDAnalysisClientToken</key><string>aaca489807595ab9179a2a5ec001ff089c8e9b651459e8ada0e81c35fc25dc9d</string>
