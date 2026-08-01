@@ -1,3 +1,4 @@
 OBDNative bridge API 1.0
 App release 0.5.0 build 11
-Hosted UI: https://project-2yxp4.vercel.app/obd-shell.html
+Hosted UI: https://tonygit33.github.io/mac-browser-handoff-ui/obd-shell.html
+AI API: https://project-2yxp4.vercel.app/api/bridge-realtime?command=obd-analyze
