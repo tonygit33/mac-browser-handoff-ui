@@ -13,7 +13,11 @@ final class OBDBridgeUITests: XCTestCase {
         let shell = app.webViews["OBD Web Shell"]
         XCTAssertTrue(shell.waitForExistence(timeout: 10))
         XCTAssertTrue(shell.staticTexts["OBD Bridge"].waitForExistence(timeout: 5))
-        XCTAssertTrue(shell.buttons["Connect MX+"].exists)
+
+        let connectionControl = shell.buttons
+            .matching(NSPredicate(format: "label IN %@", ["Connect MX+", "Disconnect"]))
+            .firstMatch
+        XCTAssertTrue(connectionControl.waitForExistence(timeout: 5))
         XCTAssertTrue(shell.buttons["Full snapshot"].exists)
         attachScreenshot(named: "01-web-shell")
     }
