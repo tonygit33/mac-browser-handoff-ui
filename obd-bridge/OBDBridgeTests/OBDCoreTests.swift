@@ -2,18 +2,29 @@ import XCTest
 @testable import OBDBridge
 
 final class OBDCoreTests: XCTestCase {
-    func testReadOnlyPolicyAllowsKnownSafeReads() {
-        XCTAssertTrue(ReadOnlyCommandPolicy.isAllowed("010C"))
-        XCTAssertTrue(ReadOnlyCommandPolicy.isAllowed(" 09 02 "))
-        XCTAssertTrue(ReadOnlyCommandPolicy.isAllowed("03"))
-        XCTAssertTrue(ReadOnlyCommandPolicy.isAllowed("STMA 200"))
-        XCTAssertTrue(ReadOnlyCommandPolicy.isAllowed("ATRV"))
+    func testReadOnlyPolicyAllowsKnownSafeReadsAndVolatileRouting() {
+        for command in [
+            "010C", " 09 02 ", "03", "1902FF", "22F190", "STMA 200",
+            "ATRV", "ATSH7E0", "ATCRA7E8", "ATSP6", "STP33", "STFAP7E8,7FF"
+        ] {
+            XCTAssertTrue(ReadOnlyCommandPolicy.isAllowed(command), "Unexpectedly blocked: \(command)")
+        }
     }
 
-    func testReadOnlyPolicyBlocksWritesAndMalformedCommands() {
-        for command in ["04", "08", "10", "11", "2F01", "3B00", "ATSH7E0", "STPX", "", "hello"] {
+    func testReadOnlyPolicyBlocksWritesPersistentConfigurationAndRawTransmit() {
+        for command in [
+            "04", "08", "10", "11", "14FFFFFF", "2701", "2E1234", "2F01",
+            "3101", "3400", "3601", "3D00", "STPX H:7E0 D:021001", "ATPP01ON",
+            "STWBR115200", "STGPOW1", "", "hello"
+        ] {
             XCTAssertFalse(ReadOnlyCommandPolicy.isAllowed(command), "Unexpectedly allowed: \(command)")
         }
+    }
+
+    func testReadOnlyPolicyBoundsPassiveMonitorRequests() {
+        XCTAssertTrue(ReadOnlyCommandPolicy.isAllowed("STMA1"))
+        XCTAssertTrue(ReadOnlyCommandPolicy.isAllowed("STMA5000"))
+        XCTAssertFalse(ReadOnlyCommandPolicy.isAllowed("STMA5001"))
     }
 
     func testSessionFileNamesCannotCreateNestedPaths() {
@@ -71,10 +82,7 @@ final class OBDCoreTests: XCTestCase {
 
     func testFreezeFrameRemovesFrameByteBeforePIDFormula() throws {
         let record = try XCTUnwrap(
-            StructuredDiagnosticDecoder.freezeFrame(
-                command: "020C00",
-                response: "7E8 05 42 0C 00 1A F8\r>"
-            )
+            StructuredDiagnosticDecoder.freezeFrame(command: "020C00", response: "7E8 05 42 0C 00 1A F8\r>")
         )
         XCTAssertEqual(record.frameNumber, 0)
         let sample = try XCTUnwrap(record.samples.first)
@@ -85,19 +93,13 @@ final class OBDCoreTests: XCTestCase {
 
     func testFreezeFrameDTCDecode() throws {
         let record = try XCTUnwrap(
-            StructuredDiagnosticDecoder.freezeFrame(
-                command: "020200",
-                response: "42 02 00 21 88\r>"
-            )
+            StructuredDiagnosticDecoder.freezeFrame(command: "020200", response: "42 02 00 21 88\r>")
         )
         XCTAssertEqual(record.dtc, "P2188")
     }
 
     func testUnambiguousLegacyMode06Record() throws {
-        let records = StructuredDiagnosticDecoder.mode06(
-            command: "0601",
-            response: "46 01 80 00 10 00 00 00 20\r>"
-        )
+        let records = StructuredDiagnosticDecoder.mode06(command: "0601", response: "46 01 80 00 10 00 00 00 20\r>")
         XCTAssertEqual(records.count, 1)
         let record = try XCTUnwrap(records.first)
         XCTAssertEqual(record.testID, "80")
@@ -108,10 +110,7 @@ final class OBDCoreTests: XCTestCase {
     }
 
     func testAmbiguousMode06LayoutStaysRawOnly() throws {
-        let records = StructuredDiagnosticDecoder.mode06(
-            command: "0601",
-            response: "46 01 80 01 00 10 00 00 00 20\r>"
-        )
+        let records = StructuredDiagnosticDecoder.mode06(command: "0601", response: "46 01 80 01 00 10 00 00 00 20\r>")
         XCTAssertEqual(records.count, 1)
         let record = try XCTUnwrap(records.first)
         XCTAssertNil(record.testID)
