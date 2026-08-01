@@ -30,6 +30,7 @@ jobs:
       - name: Assemble static web shell
         run: |
           set -euo pipefail
+          # The installed IPA and the hosted page share the same OBDNative 1.0 contract.
           rm -rf _site
           mkdir -p _site
           cp obd-bridge/Resources/obd-shell-fallback.html _site/obd-shell.html
