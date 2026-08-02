@@ -4,7 +4,7 @@ import Foundation
 ///
 /// This router is intentionally separate from WebKit plumbing. NativeWebBridge can delegate
 /// supported methods here. All vehicle commands still pass through ReadOnlyCommandPolicy.
-/// Programming methods expose catalog and preparation data only; execute is hard-rejected.
+/// Programming methods expose catalog, read plans and preparation data only; execute is hard-rejected.
 enum OBDNativeV11Router {
     enum RouterError: LocalizedError {
         case unknownMethod(String)
@@ -36,6 +36,8 @@ enum OBDNativeV11Router {
         "monitor.capture",
         "transport.readDID",
         "programming.catalog",
+        "programming.readPlan",
+        "programming.read",
         "programming.prepare",
         "programming.execute"
     ]
@@ -138,15 +140,64 @@ enum OBDNativeV11Router {
         case "programming.catalog":
             return [
                 "modules": MazdaProgrammingCatalog.modulesPayload,
+                "readPlans": MazdaProgrammingReadCatalog.plans.map(\.payload),
                 "executionAvailable": false,
                 "policy": OBDLinkCapabilityCatalog.policyVersion
             ]
 
-        case "programming.prepare":
+        case "programming.readPlan":
             guard let id = params["operationID"] as? String else { throw RouterError.missingParameter("operationID") }
-            guard let payload = MazdaProgrammingCatalog.preparationPayload(id: id) else {
+            guard let payload = MazdaProgrammingReadCatalog.payload(operationID: id) else {
                 throw RouterError.invalidValue("Unknown programming operation: \(id)")
             }
+            return [
+                "plan": payload,
+                "message": "A read surface is defined even when the exact write identifier is unknown."
+            ]
+
+        case "programming.read":
+            guard bridge.isConnected else { throw RouterError.notConnected }
+            guard let id = params["operationID"] as? String else { throw RouterError.missingParameter("operationID") }
+            guard let plan = MazdaProgrammingReadCatalog.plan(operationID: id) else {
+                throw RouterError.invalidValue("Unknown programming operation: \(id)")
+            }
+
+            guard plan.executable else {
+                return [
+                    "accepted": 0,
+                    "queued": false,
+                    "plan": plan.payload,
+                    "message": "The read target is documented, but exact transport/addressing is not executable yet."
+                ]
+            }
+
+            if plan.requiresExplicitConfirmation {
+                let confirmed = params["confirmCandidate"] as? Bool ?? false
+                guard confirmed else {
+                    return [
+                        "accepted": 0,
+                        "queued": false,
+                        "confirmationRequired": true,
+                        "plan": plan.payload,
+                        "message": "This is a candidate read route. Re-submit with confirmCandidate=true after reviewing the target."
+                    ]
+                }
+            }
+
+            try enqueue(plan.commands, bridge: bridge)
+            return [
+                "accepted": plan.commands.count,
+                "queued": true,
+                "plan": plan.payload,
+                "delivery": "read responses are emitted through the normal native log stream"
+            ]
+
+        case "programming.prepare":
+            guard let id = params["operationID"] as? String else { throw RouterError.missingParameter("operationID") }
+            guard var payload = MazdaProgrammingCatalog.preparationPayload(id: id) else {
+                throw RouterError.invalidValue("Unknown programming operation: \(id)")
+            }
+            payload["readPlan"] = MazdaProgrammingReadCatalog.payload(operationID: id) ?? [:]
             return payload
 
         case "programming.execute":
@@ -170,9 +221,12 @@ enum OBDNativeV11Router {
 
     private static func programmingSummary() -> [String: Any] {
         let grouped = Dictionary(grouping: MazdaProgrammingCatalog.operations, by: { $0.writeState.rawValue })
+        let readGrouped = Dictionary(grouping: MazdaProgrammingReadCatalog.plans, by: { $0.mode.rawValue })
         return [
             "operations": MazdaProgrammingCatalog.operations.count,
             "byState": grouped.mapValues(\.count),
+            "readPlans": MazdaProgrammingReadCatalog.plans.count,
+            "readPlansByMode": readGrouped.mapValues(\.count),
             "executionAvailable": false
         ]
     }
