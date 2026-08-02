@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "obd-bridge/Resources/obd-shell-fallback.html"
+      - "obd-bridge/Resources/mazda5-scanner-catalog.json"
       - ".github/workflows/deploy-obd-web-shell-pages.yml"
   workflow_dispatch:
 
@@ -35,6 +36,7 @@ jobs:
           mkdir -p _site
           cp obd-bridge/Resources/obd-shell-fallback.html _site/obd-shell.html
           cp obd-bridge/Resources/obd-shell-fallback.html _site/index.html
+          cp obd-bridge/Resources/mazda5-scanner-catalog.json _site/mazda5-scanner-catalog.json
           cat > _site/obd-shell-health.json <<'JSON'
           {"ok":true,"surface":"obd-web-shell-pages","bridge":"1.0"}
           JSON
@@ -43,6 +45,7 @@ jobs:
           JSON
           test -s _site/obd-shell.html
           grep -Fq 'window.OBDNative' _site/obd-shell.html
+          python3 obd-bridge/tools/validate_compact_scanner_catalog.py _site/mazda5-scanner-catalog.json
 
       - name: Configure Pages
         uses: actions/configure-pages@v5

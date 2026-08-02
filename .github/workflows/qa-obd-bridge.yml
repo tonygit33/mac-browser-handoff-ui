@@ -41,6 +41,7 @@ jobs:
           /tmp/obd-qa-venv/bin/python -m py_compile obd-bridge/tools/*.py
           /tmp/obd-qa-venv/bin/python obd-bridge/tools/validate_vehicle_data_packs.py
           /tmp/obd-qa-venv/bin/python obd-bridge/tools/qa_static_checks.py
+          /tmp/obd-qa-venv/bin/python obd-bridge/tools/validate_compact_scanner_catalog.py
       - name: Install XcodeGen
         run: brew install xcodegen
       - name: Generate Xcode project
@@ -107,6 +108,7 @@ jobs:
           test -f "$APP_PATH/core-sae-j1979-generated.diagnostic-pack.json"
           test -f "$APP_PATH/core-sae-j1979.diagnostic-pack.json"
           test -f "$APP_PATH/mazda-5-cr-2007.diagnostic-pack.json"
+          test -f "$APP_PATH/mazda5-scanner-catalog.json"
           test -f "$APP_PATH/obd-shell-fallback.html"
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_PATH/Info.plist")" = "0.5.0"
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$APP_PATH/Info.plist")" = "11"
