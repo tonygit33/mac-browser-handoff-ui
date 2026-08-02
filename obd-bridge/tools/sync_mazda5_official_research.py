@@ -80,7 +80,7 @@ def sync(db_path: Path, source_path: Path):
             if integrity!="ok" or fk: raise ValueError(f"database QA failed: integrity={integrity} fk={fk}")
             after=db.execute("select count(*) from mazda5_transport_candidates").fetchone()[0]
         return {"status":"ok","inserted":inserted,"before":before,"after":after,"source_sha256":source_sha,
-                "integrity":integrity,"foreign_key_errors":fk,"duplicates":dup,"unsafe_rows":unsafe,"official_rows_with_commands":official_with_commands,"official_rows_with_commands":official_with_commands,
+                "integrity":integrity,"foreign_key_errors":fk,"duplicates":dup,"unsafe_rows":unsafe,"official_rows_with_commands":official_with_commands,
                 "release_version":NEW_RELEASE,"logical_checksum":checksum}
     finally: db.close()
 
