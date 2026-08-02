@@ -51,6 +51,13 @@ class ImportTests(unittest.TestCase):
         self.assertEqual(con.execute("select count(*) from mazda5_obd_capture_sessions").fetchone()[0], 1)
         self.assertEqual(con.execute("select count(*) from mazda5_obd_raw_responses").fetchone()[0], 1)
         self.assertEqual(con.execute("select ecu_header from mazda5_obd_raw_responses").fetchone()[0], "7E8")
+        self.assertEqual(con.execute("select status from mazda5_obd_capture_sessions").fetchone()[0], "completed")
+
+    def test_stopped_response_is_not_supported(self):
+        classification, supported, error_class = importer.classify_response("STOPPED\n>", False)
+        self.assertEqual(classification, "interrupted")
+        self.assertEqual(supported, 0)
+        self.assertEqual(error_class, "stopped")
 
     def test_rejects_active_or_clear_command(self):
         _, db, session = self.make_fixture("04")

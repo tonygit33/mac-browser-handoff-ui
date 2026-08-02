@@ -1,0 +1,27 @@
+{
+  "accepted_observations": [
+    "OBDLink MX+ adapter setup commands acknowledged",
+    "Adapter voltage response was 13.7V",
+    "Mode 01 PID 06 request timed out in this capture",
+    "Mode 01 PID 07 request was interrupted/stopped and must not be treated as supported"
+  ],
+  "capture_timezone": "+03:00",
+  "events_sha256": "3962365cc8befab339c7a0b2201aeb06fe61e623e799baf3ea31b580428bf94e",
+  "evidence_class": "direct_owner_vehicle_transcript",
+  "limitations": [
+    "Visible excerpt only",
+    "No positive ECU payload in this excerpt",
+    "No VIN or calibration identifier in this excerpt",
+    "Not usable as a decoder formula or diagnostic threshold"
+  ],
+  "raw_transcript_sha256": "11cc9d63c5f4756851a5ea8c55439428a198da4751503eb4f6282336b208c303",
+  "safety": {
+    "active_tests": false,
+    "configuration": false,
+    "dtc_clear": false,
+    "programming": false,
+    "read_only": true
+  },
+  "source": "Vehicle owner message in ChatGPT conversation on 2026-08-01",
+  "vehicle_scope": "Mazda 5 CR 2007 L3 2.3 gasoline"
+}

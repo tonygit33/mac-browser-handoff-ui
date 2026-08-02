@@ -1,0 +1,11 @@
+{"adapter":"OBDLink MX+","appMode":"read-only","fuelMode":"Unknown","scenario":"Adapter initialization and standard PID probe from user-provided terminal transcript","source":"ChatGPT conversation transcript supplied by vehicle owner","startedAt":"2026-08-01T12:10:27.030+03:00","timestamp":"2026-08-01T12:10:27.030+03:00","type":"session_start"}
+{"command":"ATE0","response":"OK\n>","timedOut":"false","timestamp":"2026-08-01T12:10:27.030+03:00","type":"command"}
+{"command":"ATL0","response":"OK\n>","timedOut":"false","timestamp":"2026-08-01T12:10:27.089+03:00","type":"command"}
+{"command":"ATS1","response":"OK\n>","timedOut":"false","timestamp":"2026-08-01T12:10:27.109+03:00","type":"command"}
+{"command":"ATH1","response":"OK\n>","timedOut":"false","timestamp":"2026-08-01T12:10:27.193+03:00","type":"command"}
+{"command":"ATAL","response":"OK\n>","timedOut":"false","timestamp":"2026-08-01T12:10:27.214+03:00","type":"command"}
+{"command":"ATSP0","response":"OK\n>","timedOut":"false","timestamp":"2026-08-01T12:10:27.233+03:00","type":"command"}
+{"command":"ATRV","response":"13.7V\n>","timedOut":"false","timestamp":"2026-08-01T12:10:27.495+03:00","type":"command"}
+{"command":"0106","response":"SEARCHING...\nTIMEOUT: 0106","timedOut":"true","timestamp":"2026-08-01T12:10:27.542+03:00","type":"command"}
+{"command":"0107","response":"STOPPED\n>","timedOut":"false","timestamp":"2026-08-01T12:10:30.123+03:00","type":"command"}
+{"endedAt":"2026-08-01T12:10:30.230+03:00","fuelMode":"Unknown","scenario":"Adapter initialization and standard PID probe from user-provided terminal transcript","timestamp":"2026-08-01T12:10:30.230+03:00","type":"session_end"}

@@ -53,6 +53,8 @@ def classify_response(response: str, timed_out: bool) -> tuple[str, int | None, 
         return "timeout", 0, "timeout"
     if "NO DATA" in upper:
         return "no_data", 0, "no_data"
+    if "STOPPED" in upper:
+        return "interrupted", 0, "stopped"
     if "UNABLE TO CONNECT" in upper or "BUS ERROR" in upper or "CAN ERROR" in upper:
         return "transport_error", 0, "transport_error"
     if "?" == upper.strip() or "ERROR" in upper:
@@ -173,7 +175,7 @@ def import_session(db_path: Path, source: Path, dry_run: bool = False) -> dict[s
                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,1)
             """, (
                 started_at, finished_at, VEHICLE, adapter, "OBD-II", None, None, None,
-                "complete" if finished_at else "open", "Imported from OBDBridge events.jsonl",
+                "completed" if finished_at else "open", "Imported from OBDBridge events.jsonl",
                 str(events_path), source_sha, scenario, fuel_mode,
             ))
             session_id = int(cur.lastrowid)
