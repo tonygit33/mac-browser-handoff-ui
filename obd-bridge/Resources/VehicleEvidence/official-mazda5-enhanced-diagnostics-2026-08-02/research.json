@@ -1,0 +1,44 @@
+{
+  "dataset_id": "official-mazda5-enhanced-diagnostics-2026-08-02",
+  "vehicle_scope": "Mazda 5 CR 2007 L3 2.3 gasoline",
+  "evidence_class": "official_vendor_and_manufacturer_scope",
+  "sources": [
+    {
+      "url": "https://www.obdlink.com/oem",
+      "title": "OBDLink MX+ OEM-Specific Enhanced Diagnostics Support Coverage",
+      "sha256": "27f9a64311fd55997a50ba09a280e8de2eea3291a3f3c0a18d6b4246706caa1e",
+      "byte_count": 886755,
+      "retrieved_at_utc": "2026-08-02T09:13:13Z",
+      "locator": "vehicle coverage page 22; Mazda supported modules pages 46-47"
+    },
+    {
+      "url": "https://support.obdlink.com/support/solutions/articles/43000711154-get-started-with-diagnostics",
+      "title": "OBDLink Get Started with Diagnostics",
+      "sha256": "ed0e2cb59ff77d2be5df7da14c2083c7741e839d05588155c8dbbac9167222eb",
+      "byte_count": 112875,
+      "retrieved_at_utc": "2026-08-02T09:14:16Z"
+    },
+    {
+      "url": "https://www.mazdaserviceinfo.com/ids-software",
+      "title": "Mazda Service Info IDS Software",
+      "sha256": "ef40d7c884305c83e8c962da99e0d7e8a3e09a895850df9ba4a0199d41bf822f",
+      "byte_count": 95801,
+      "retrieved_at_utc": "2026-08-02T09:14:16Z"
+    }
+  ],
+  "records": [
+    {"module":"VEHICLE_SCOPE","pid_name":"ENHANCED_DIAGNOSTICS_COVERAGE","candidate_label":"Mazda5 2007 enhanced OEM diagnostics coverage","applicability":"direct_model_year_official_coverage","evidence_type":"official_obdlink_enhanced_coverage_pdf","source_url":"https://www.obdlink.com/oem","confidence":"high","status":"official_coverage_unverified_on_vehicle","notes":"Official OBDLink coverage lists Mazda Mazda5 2006-2015 and Mazda5 (EURO) 2005, 2007. This confirms vehicle-year coverage but not proprietary request bytes or the presence of every module on every trim."},
+    {"module":"PCM","pid_name":"OEM_MODULE_SCAN","candidate_label":"Powertrain Control Module enhanced scan candidate","applicability":"make_level_module_list_vehicle_year_covered","evidence_type":"official_obdlink_enhanced_coverage_pdf","source_url":"https://www.obdlink.com/oem","confidence":"medium","status":"official_coverage_unverified_on_vehicle","notes":"Official Mazda make-level list includes PCM. Read OEM DTCs and live parameters only after the module and PIDs are discovered on Anton's vehicle."},
+    {"module":"TCM","pid_name":"OEM_MODULE_SCAN","candidate_label":"Transmission Control Module enhanced scan candidate","applicability":"make_level_module_list_vehicle_year_covered","evidence_type":"official_obdlink_enhanced_coverage_pdf","source_url":"https://www.obdlink.com/oem","confidence":"medium","status":"official_coverage_unverified_on_vehicle","notes":"Official Mazda make-level list includes TCM. High-value read-only targets include transmission temperature, shaft speeds, gear and torque-converter state; this row asserts no exact PID."},
+    {"module":"ABS","pid_name":"OEM_MODULE_SCAN","candidate_label":"ABS / traction-control enhanced scan candidate","applicability":"make_level_module_list_vehicle_year_covered","evidence_type":"official_obdlink_enhanced_coverage_pdf","source_url":"https://www.obdlink.com/oem","confidence":"medium","status":"official_coverage_unverified_on_vehicle","notes":"Official Mazda make-level list includes ABS. Candidate targets include OEM DTCs, individual wheel speeds and brake/traction states."},
+    {"module":"IC","pid_name":"OEM_MODULE_SCAN","candidate_label":"Instrument Cluster enhanced scan candidate","applicability":"make_level_module_list_vehicle_year_covered","evidence_type":"official_obdlink_enhanced_coverage_pdf","source_url":"https://www.obdlink.com/oem","confidence":"medium","status":"official_coverage_unverified_on_vehicle","notes":"Official Mazda make-level list includes IC. Do not infer bus address or parameter scaling from the coverage document."},
+    {"module":"EPS/PSCM","pid_name":"OEM_MODULE_SCAN","candidate_label":"Electric power steering enhanced scan candidate","applicability":"make_level_module_list_vehicle_year_covered","evidence_type":"official_obdlink_enhanced_coverage_pdf","source_url":"https://www.obdlink.com/oem","confidence":"medium","status":"official_coverage_unverified_on_vehicle","notes":"Official Mazda make-level list includes EPS and PSCM. Exact naming may vary by market and configuration."},
+    {"module":"SASM","pid_name":"OEM_MODULE_SCAN","candidate_label":"Steering Angle Sensor Module enhanced scan candidate","applicability":"make_level_module_list_vehicle_year_covered","evidence_type":"official_obdlink_enhanced_coverage_pdf","source_url":"https://www.obdlink.com/oem","confidence":"medium","status":"official_coverage_unverified_on_vehicle","notes":"Official Mazda make-level list includes SASM. No zero-point threshold or calibration behavior is enabled."},
+    {"module":"RCM","pid_name":"OEM_MODULE_SCAN","candidate_label":"Restraint Control Module enhanced scan candidate","applicability":"make_level_module_list_vehicle_year_covered","evidence_type":"official_obdlink_enhanced_coverage_pdf","source_url":"https://www.obdlink.com/oem","confidence":"medium","status":"official_coverage_unverified_on_vehicle","notes":"Official Mazda list includes RCM, IABM and OCS. Read-only SRS discovery only; initialization and configuration remain prohibited."},
+    {"module":"BCM/GEM","pid_name":"OEM_MODULE_SCAN","candidate_label":"Body control / Generic Electronic Module enhanced scan candidate","applicability":"make_level_module_list_vehicle_year_covered","evidence_type":"official_obdlink_enhanced_coverage_pdf","source_url":"https://www.obdlink.com/oem","confidence":"medium","status":"official_coverage_unverified_on_vehicle","notes":"Official Mazda make-level list includes BCM/GEM and GEM. Candidate for body DTCs and status data only."},
+    {"module":"LPSDM","pid_name":"OEM_MODULE_SCAN","candidate_label":"Left Power Sliding Door Module enhanced scan candidate","applicability":"make_level_module_list_vehicle_year_covered","evidence_type":"official_obdlink_enhanced_coverage_pdf","source_url":"https://www.obdlink.com/oem","confidence":"medium","status":"official_coverage_unverified_on_vehicle","notes":"Official Mazda list explicitly includes LPSDM. Candidate for left sliding-door DTCs, latch/switch and motor status; active operation is prohibited."},
+    {"module":"RPSDM","pid_name":"OEM_MODULE_SCAN","candidate_label":"Right Power Sliding Door Module enhanced scan candidate","applicability":"make_level_module_list_vehicle_year_covered","evidence_type":"official_obdlink_enhanced_coverage_pdf","source_url":"https://www.obdlink.com/oem","confidence":"medium","status":"official_coverage_unverified_on_vehicle","notes":"Official Mazda list explicitly includes RPSDM. Candidate for right sliding-door DTCs, latch/switch and motor status; active operation is prohibited."},
+    {"module":"DIAGNOSTIC_DISCOVERY","pid_name":"ENHANCED_NETWORK_SCAN","candidate_label":"Network-aware OEM PID discovery and persistence","applicability":"direct_workflow_official_obdlink","evidence_type":"official_obdlink_support_workflow","source_url":"https://support.obdlink.com/support/solutions/articles/43000711154-get-started-with-diagnostics","confidence":"high","status":"official_workflow_not_yet_verified_on_vehicle","notes":"OBDLink documents that some PIDs require a specific enhanced network. On first connection the app scans supported enhanced PIDs for about 1-2 minutes and saves the results. Enumerate each offered network and persist positive support."},
+    {"module":"PROFESSIONAL_REFERENCE","pid_name":"MAZDA_IDS_VCMII","candidate_label":"Mazda IDS with VCM II as professional read-only comparison target","applicability":"direct_generation_tool_scope_official_mazda","evidence_type":"official_mazda_service_info","source_url":"https://www.mazdaserviceinfo.com/ids-software","confidence":"high","status":"official_tool_scope_non_executable","notes":"Mazda states IDS is for sixth-generation vehicles and earlier and is used with Mazda VCM II. Use IDS output as a comparison target for module inventory, OEM DTC names and live-data labels only."}
+  ]
+}
