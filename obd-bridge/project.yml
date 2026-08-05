@@ -19,12 +19,14 @@ targets:
       path: OBDBridge/Info.plist
       properties:
         CFBundleDisplayName: OBD Bridge
-        CFBundleShortVersionString: "0.5.0"
-        CFBundleVersion: "11"
+        CFBundleShortVersionString: "0.5.1"
+        CFBundleVersion: "12"
         UIFileSharingEnabled: true
         LSSupportsOpeningDocumentsInPlace: true
-        OBDWebAppURL: https://tonygit33.github.io/mac-browser-handoff-ui/obd-shell.html
+        OBDWebAppURL: https://mazda5-scanner-ui.vercel.app/
         OBDWebAllowedHosts:
+          - mazda5-scanner-ui.vercel.app
+          - vtnucevhyhfvymppjbfa.supabase.co
           - tonygit33.github.io
           - project-2yxp4.vercel.app
         OBDWebBridgeVersion: "1.0"
@@ -42,8 +44,8 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.anton.obdbridge
         PRODUCT_NAME: OBDBridge
-        MARKETING_VERSION: "0.5.0"
-        CURRENT_PROJECT_VERSION: "11"
+        MARKETING_VERSION: "0.5.1"
+        CURRENT_PROJECT_VERSION: "12"
         INFOPLIST_FILE: OBDBridge/Info.plist
         TARGETED_DEVICE_FAMILY: "1"
         CODE_SIGN_STYLE: Automatic
